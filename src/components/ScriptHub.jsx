@@ -1,13 +1,29 @@
 import React, { useState, useEffect } from 'react';
+const globalSearchState = {
+  term: '',
+  results: [],
+  hasSearched: false,
+  activeScriptId: null
+};
 
 export default function ScriptHub({ onSelectScript }) {
-  const [scripts, setScripts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(globalSearchState.term);
+  const [searchResults, setSearchResults] = useState(globalSearchState.results);
+  const [hasSearched, setHasSearched] = useState(globalSearchState.hasSearched);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [activeScript, setActiveScript] = useState(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [activeScript, setActiveScript] = useState(
+    globalSearchState.activeScriptId ? 
+      searchResults.find(s => s._id === globalSearchState.activeScriptId) : 
+      null
+  );
+  
+  useEffect(() => {
+    globalSearchState.term = searchTerm;
+    globalSearchState.results = searchResults;
+    globalSearchState.hasSearched = hasSearched;
+    globalSearchState.activeScriptId = activeScript?._id;
+  }, [searchTerm, searchResults, hasSearched, activeScript]);
   
   const fetchScripts = async (query) => {
     setLoading(true);
@@ -24,7 +40,9 @@ export default function ScriptHub({ onSelectScript }) {
       );
       
       setSearchResults(availableScripts || []);
+      globalSearchState.results = availableScripts || [];
       setHasSearched(true);
+      globalSearchState.hasSearched = true;
     } catch (err) {
       setError(err.message);
       console.error(err);
@@ -42,10 +60,17 @@ export default function ScriptHub({ onSelectScript }) {
   
   const handleScriptSelect = (script) => {
     setActiveScript(script);
+    globalSearchState.activeScriptId = script._id;
     if (onSelectScript) {
       onSelectScript(script.title, script.script);
     }
   };
+  
+  useEffect(() => {
+    if (globalSearchState.results.length > 0 && searchResults.length === 0) {
+      setSearchResults(globalSearchState.results);
+    }
+  }, [searchResults]);
   
   return (
     <div className="scripthub-container">
