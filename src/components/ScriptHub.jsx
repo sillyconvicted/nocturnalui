@@ -7,6 +7,7 @@ export default function ScriptHub({ onSelectScript }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [activeScript, setActiveScript] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
   
   const fetchScripts = async (query) => {
     setLoading(true);
@@ -18,6 +19,7 @@ export default function ScriptHub({ onSelectScript }) {
       }
       const data = await response.json();
       setSearchResults(data.result.scripts || []);
+      setHasSearched(true);
     } catch (err) {
       setError(err.message);
       console.error(err);
@@ -101,7 +103,11 @@ export default function ScriptHub({ onSelectScript }) {
           </div>
         ) : (
           <div className="empty-state">
-            {searchTerm ? 'No scripts found. Try a different search term.' : 'Search for scripts to get started.'}
+            {hasSearched 
+              ? searchTerm 
+                ? 'No scripts found. Try a different search term.' 
+                : 'Please enter a search term.'
+              : 'Search for scripts to get started.'}
           </div>
         )}
       </div>
