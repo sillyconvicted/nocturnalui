@@ -80,14 +80,14 @@ export default function ScriptHub({ onSelectScript }) {
                 onClick={() => handleScriptSelect(script)}
               >
                 <div className="script-card-header">
-                  <h3 className="script-title">
-                    {script.title}
+                  <div className="script-title-wrapper">
+                    <h3 className="script-title">{script.title}</h3>
                     {script.verified && (
                       <span className="verified-tag" title="Verified script">
                         ✓
                       </span>
                     )}
-                  </h3>
+                  </div>
                 </div>
                 
                 <div className="script-meta">

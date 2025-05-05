@@ -1438,39 +1438,33 @@ footer {
   margin-bottom: 8px;
 }
 
+.script-title-wrapper {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
 .script-title {
-  font-size: 16px;
-  font-weight: 600;
+  display: block;
+  flex: 1;
   margin: 0;
-  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.verified-badge {
-  background-color: #4CAF50;
-  color: white;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .verified-tag {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   margin-left: 6px;
+  margin-top: 2px;
   font-size: 10px;
   font-weight: bold;
   color: #ffffff;
@@ -1478,7 +1472,6 @@ footer {
   border-radius: 9999px;
   height: 16px;
   width: 16px;
-  vertical-align: middle;
   line-height: 1;
   padding-bottom: 1px;
 }
@@ -1544,7 +1537,6 @@ footer {
   font-style: italic;
 }
 
-/* Responsive adjustments */
 @media (max-width: 900px) {
   .scripts-grid {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
