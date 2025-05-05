@@ -92,7 +92,6 @@ export default function ScriptHub({ onSelectScript }) {
                 
                 <div className="script-meta">
                   <span className="script-game">{script.game?.name || 'Unknown Game'}</span>
-                  <span className="script-type">{script.scriptType}</span>
                 </div>
                 
                 <div className="script-stats">
