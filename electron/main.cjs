@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const fetch = require('node-fetch');
 const { powerSaveBlocker } = require('electron');
+const discordRPC = require('./discord-rpc.cjs');
 
 const isProd = process.env.NODE_ENV === 'production';
 let powerSaveBlockerId = null;
@@ -14,12 +15,14 @@ const TABS_FILE = path.join(NOCTURNAL_FOLDER, 'tabs.json');
 const SETTINGS_FILE = path.join(NOCTURNAL_FOLDER, 'settings.json');
 
 process.on('uncaughtException', (error) => {
-  dialog.showErrorBox('Error', `${error.message}\nCheck ${logFile} for details.`);
+  dialog.showErrorBox('Error', `Join our discord server.`);
 });
 
 function initializeNocturnal() {
   ensureNocturnalDir();
   initializeLogging();
+  
+  discordRPC.initRPC().catch(console.error);
   
   ipcMain.handle('save-tabs', async (event, { tabs, activeTabId }) => {
     return saveTabs(tabs, activeTabId);
@@ -108,6 +111,28 @@ function initializeNocturnal() {
   
   ipcMain.handle('save-settings', async (event, settings) => {
     return saveSettings(settings);
+  });
+
+  ipcMain.handle('update-discord-status', async (event, { type, data }) => {
+    try {
+      switch (type) {
+        case 'coding':
+          discordRPC.setCodingStatus(data.scriptName);
+          break;
+        case 'executing':
+          discordRPC.setExecutingStatus();
+          break;
+        case 'idle':
+          discordRPC.setIdleStatus();
+          break;
+        default:
+          discordRPC.updateActivity(type);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error(error);
+      return { success: false, error: error.message };
+    }
   });
 }
 
@@ -320,6 +345,8 @@ async function executeScript(scriptContent) {
   }
 
   try {
+    discordRPC.setExecutingStatus();
+    
     const postUrl = `http://127.0.0.1:${currentHydrogenPort}/execute`;
     const response = await fetch(postUrl, {
       method: 'POST',
@@ -339,6 +366,8 @@ async function executeScript(scriptContent) {
   } catch (error) {
     currentHydrogenPort = null;
     throw error;
+  } finally {
+    discordRPC.setCodingStatus();
   }
 }
 
@@ -470,11 +499,13 @@ function initializeLogging() {
       const latestLog = files[0];
       const logContent = fs.readFileSync(latestLog.path, 'utf8');
       
-      const entries = parseLogEntries(logContent);
+      const result = parseLogEntries(logContent);
       
       return { 
         success: true, 
-        entries,
+        entries: result.entries,
+        filteredCount: result.filteredCount,
+        totalCount: result.totalCount,
         file: latestLog.name
       };
     } catch (error) {
@@ -492,15 +523,38 @@ function parseLogEntries(logContent) {
   
   const logPattern = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z),.*?\[(FLog::.*?)\] (.*)$/;
   
+  let totalEntries = 0;
+  let filteredEntries = 0;
+  
   const filtered = lines
     .map(line => {
       const match = line.match(logPattern);
       if (match) {
+        totalEntries++;
         const [_, timestamp, logType, message] = match;
         
-        if (message.startsWith('Settings Date') || 
-            message.includes('Date header') ||
-            message.includes('Date timestamp')) {
+        const filtersLowerCase = [
+          'settings date',
+          'date header',
+          'date timestamp',
+          'clientruninfo',
+          'updatecontroller',
+          'appdelegate',
+          'settingsurl'
+        ];
+        
+        const messageLower = message.toLowerCase();
+        
+        if (filtersLowerCase.some(filter => messageLower.includes(filter))) {
+          filteredEntries++;
+          return null;
+        }
+        
+        if (logType.includes('ClientAppSettingsRebranding') || 
+            logType.includes('ClientRunInfo') ||
+            logType.includes('UpdateController') ||
+            logType.includes('AppDelegate')) {
+          filteredEntries++;
           return null;
         }
         
@@ -513,7 +567,11 @@ function parseLogEntries(logContent) {
     })
     .filter(entry => entry !== null);
   
-  return filtered.slice(-1000).reverse();
+  return {
+    entries: filtered.slice(-1000).reverse(),
+    filteredCount: filteredEntries,
+    totalCount: totalEntries
+  };
 }
 
 initializeNocturnal();
@@ -586,4 +644,6 @@ app.on('before-quit', () => {
   if (powerSaveBlockerId !== null) {
     powerSaveBlocker.stop(powerSaveBlockerId);
   }
+  
+  discordRPC.destroyRPC();
 });

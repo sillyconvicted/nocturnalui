@@ -8,25 +8,39 @@ export default function ConsolePage() {
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefreshTime, setLastRefreshTime] = useState(null);
+  const [filteredCount, setFilteredCount] = useState(0);
   const logContainerRef = useRef(null);
+  const scrollPositionRef = useRef(null);
   const isElectron = typeof window !== 'undefined' && window.electron !== undefined;
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (preserveScroll = false) => {
     if (!isElectron) {
-      setError("why are you here");
+      setError("get out!");
       setLoading(false);
       return;
     }
 
     try {
+
+      if (preserveScroll && logContainerRef.current) {
+        scrollPositionRef.current = {
+          top: logContainerRef.current.scrollTop,
+          height: logContainerRef.current.scrollHeight
+        };
+      }
+      
       setLoading(true);
       const result = await window.electron.invoke('read-roblox-logs');
       
       if (result.success) {
         setLogEntries(result.entries || []);
         setLastRefreshTime(new Date());
+        
+        if (result.filteredCount !== undefined) {
+          setFilteredCount(result.filteredCount);
+        }
       } else {
-        setError(result.error || "Failed to read logs");
+        setError(result.error || "i couldn't to read logs");
       }
     } catch (err) {
       setError(err.message || "An error occurred!");
@@ -36,23 +50,34 @@ export default function ConsolePage() {
   };
 
   useEffect(() => {
+    if (!loading && logContainerRef.current) {
+      if (scrollPositionRef.current) {
+        const newPosition = scrollPositionRef.current.top + 
+                           (logContainerRef.current.scrollHeight - scrollPositionRef.current.height);
+        
+        if (Math.abs(logContainerRef.current.scrollHeight - scrollPositionRef.current.height) > 10) {
+          logContainerRef.current.scrollTop = newPosition;
+        }
+        
+        scrollPositionRef.current = null;
+      } else {
+        logContainerRef.current.scrollTop = 0;
+      }
+    }
+  }, [logEntries, loading]);
+
+  useEffect(() => {
     fetchLogs();
     
     let refreshInterval;
     if (autoRefresh) {
-      refreshInterval = setInterval(fetchLogs, 5000);
+      refreshInterval = setInterval(() => fetchLogs(true), 5000);
     }
     
     return () => {
       if (refreshInterval) clearInterval(refreshInterval);
     };
   }, [autoRefresh]);
-
-  useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [logEntries]);
 
   const formatLogTimestamp = (timestamp) => {
     if (!timestamp) return '';
@@ -66,10 +91,39 @@ export default function ConsolePage() {
   };
 
   const getLogTypeClass = (entry) => {
-    if (entry.includes('Error') || entry.includes('error')) return 'console-error';
-    if (entry.includes('Warn') || entry.includes('warn')) return 'console-warning';
+    if (!entry) return '';
+    
+    if (entry.toLowerCase().includes('error') || 
+        entry.includes('Exception') || 
+        entry.includes('failed')) {
+      return 'console-error';
+    }
+    
+    if (entry.toLowerCase().includes('warn') || 
+        entry.toLowerCase().includes('caution') || 
+        entry.includes('⚠️')) {
+      return 'console-warning';
+    }
+    
     return '';
   };
+  
+  const shouldShowEntry = (entry) => {
+    if (!entry || !entry.text) return false;
+    
+    const text = entry.text.toLowerCase();
+    
+    if (text.includes('clientruninfo') || 
+        text.includes('updatecontroller') ||
+        text.includes('appdelegate') ||
+        text.includes('settingsurl')) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const displayedEntries = logEntries.filter(shouldShowEntry);
   
   return (
     <div className="log-viewer-container">
@@ -77,18 +131,10 @@ export default function ConsolePage() {
         <h2 className="log-viewer-title">Roblox Logs</h2>
         <div className="log-viewer-actions">
           <div className="auto-refresh-toggle">
-            <input 
-              type="checkbox" 
-              id="auto-refresh" 
-              checked={autoRefresh} 
-              onChange={() => setAutoRefresh(!autoRefresh)} 
-              className="toggle-checkbox"
-            />
-            <label htmlFor="auto-refresh"></label>
           </div>
           <button 
             className="refresh-button"
-            onClick={fetchLogs}
+            onClick={() => fetchLogs(true)}
             disabled={loading}
           >
             Refresh
@@ -98,19 +144,20 @@ export default function ConsolePage() {
       
       {lastRefreshTime && (
         <div className="last-refresh">
-          Last updated: {lastRefreshTime.toLocaleTimeString()}
+          Last updated: {lastRefreshTime.toLocaleTimeString()} 
+          {filteredCount > 0 && ` • ${filteredCount} entries filtered`}
         </div>
       )}
       
-      {loading && logEntries.length === 0 ? (
+      {loading && displayedEntries.length === 0 ? (
         <div className="log-viewer-loading">Loading logs...</div>
       ) : error ? (
         <div className="log-viewer-error">{error}</div>
-      ) : logEntries.length === 0 ? (
+      ) : displayedEntries.length === 0 ? (
         <div className="log-viewer-empty">No log entries found</div>
       ) : (
         <div className="log-viewer-output" ref={logContainerRef}>
-          {logEntries.map((entry, index) => (
+          {displayedEntries.map((entry, index) => (
             <div key={index} className={`log-entry ${getLogTypeClass(entry.text)}`}>
               <span className="log-timestamp">{formatLogTimestamp(entry.timestamp)}</span>
               <span className="log-message">{entry.text}</span>

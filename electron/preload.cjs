@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld(
         'toggle-power-save-blocker',
         'warm-up-monaco',
         'read-roblox-logs',
+        'update-discord-status',
       ];
       
       if (validChannels.includes(channel)) {
