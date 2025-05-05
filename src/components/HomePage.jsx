@@ -19,7 +19,7 @@ export default function HomePage() {
           <ul className="changelog-list">
             <li>
               <span className="changelog-version">1.0.0</span>
-              <span className="changelog-text">Initial release with</span>
+              <span className="changelog-text">Initial release :3</span>
             </li>
           </ul>
         </div>
