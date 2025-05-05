@@ -263,6 +263,7 @@ export default function Home() {
   const sidebarItems = [
     { id: 'home', name: 'Home', icon: '' },
     { id: 'main', name: 'Main', icon: '' },
+    { id: 'console', name: 'Logs', icon: '' },
     { id: 'scripthub', name: 'ScriptHub', icon: '' },
     { id: 'settings', name: 'Settings', icon: '' },
   ];

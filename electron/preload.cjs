@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld(
         'optimize-memory',
         'toggle-power-save-blocker',
         'warm-up-monaco',
+        'read-roblox-logs',
       ];
       
       if (validChannels.includes(channel)) {

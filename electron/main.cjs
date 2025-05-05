@@ -19,6 +19,7 @@ process.on('uncaughtException', (error) => {
 
 function initializeNocturnal() {
   ensureNocturnalDir();
+  initializeLogging();
   
   ipcMain.handle('save-tabs', async (event, { tabs, activeTabId }) => {
     return saveTabs(tabs, activeTabId);
@@ -432,6 +433,87 @@ async function createWindow() {
       powerSaveBlockerId = null;
     }
   });
+}
+
+function initializeLogging() {
+  ipcMain.handle('read-roblox-logs', async () => {
+    try {
+      const robloxLogsPath = path.join(os.homedir(), 'Library', 'Logs', 'Roblox');
+      
+      if (!fs.existsSync(robloxLogsPath)) {
+        return { 
+          success: false, 
+          error: `Roblox logs directory not found at ${robloxLogsPath}` 
+        };
+      }
+      
+      const files = fs.readdirSync(robloxLogsPath)
+        .filter(file => file.endsWith('.log'))
+        .map(file => {
+          const filePath = path.join(robloxLogsPath, file);
+          const stats = fs.statSync(filePath);
+          return { 
+            name: file, 
+            path: filePath, 
+            mtime: stats.mtime 
+          };
+        })
+        .sort((a, b) => b.mtime - a.mtime); 
+      
+      if (files.length === 0) {
+        return { 
+          success: false, 
+          error: 'No log files found' 
+        };
+      }
+      
+      const latestLog = files[0];
+      const logContent = fs.readFileSync(latestLog.path, 'utf8');
+      
+      const entries = parseLogEntries(logContent);
+      
+      return { 
+        success: true, 
+        entries,
+        file: latestLog.name
+      };
+    } catch (error) {
+      console.error(error);
+      return { 
+        success: false, 
+        error: error.message || 'Unknown error' 
+      };
+    }
+  });
+}
+
+function parseLogEntries(logContent) {
+  const lines = logContent.split('\n').filter(line => line.trim() !== '');
+  
+  const logPattern = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z),.*?\[(FLog::.*?)\] (.*)$/;
+  
+  const filtered = lines
+    .map(line => {
+      const match = line.match(logPattern);
+      if (match) {
+        const [_, timestamp, logType, message] = match;
+        
+        if (message.startsWith('Settings Date') || 
+            message.includes('Date header') ||
+            message.includes('Date timestamp')) {
+          return null;
+        }
+        
+        return {
+          timestamp,
+          text: `[${logType}] ${message}`
+        };
+      }
+      return null;
+    })
+    .filter(entry => entry !== null);
+  
+  return filtered.slice(-1000).reverse();
 }
 
 initializeNocturnal();
