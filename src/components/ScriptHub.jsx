@@ -18,7 +18,12 @@ export default function ScriptHub({ onSelectScript }) {
         throw new Error(`${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      setSearchResults(data.result.scripts || []);
+      
+      const availableScripts = data.result.scripts.filter(script => 
+        script.script && script.script.trim() !== ''
+      );
+      
+      setSearchResults(availableScripts || []);
       setHasSearched(true);
     } catch (err) {
       setError(err.message);
@@ -75,8 +80,14 @@ export default function ScriptHub({ onSelectScript }) {
                 onClick={() => handleScriptSelect(script)}
               >
                 <div className="script-card-header">
-                  <h3 className="script-title">{script.title}</h3>
-                  {script.verified && <span className="verified-badge">✓</span>}
+                  <h3 className="script-title">
+                    {script.title}
+                    {script.verified && (
+                      <span className="verified-tag" title="Verified script">
+                        ✓
+                      </span>
+                    )}
+                  </h3>
                 </div>
                 
                 <div className="script-meta">

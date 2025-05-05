@@ -1448,6 +1448,9 @@ footer {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .verified-badge {
@@ -1461,6 +1464,23 @@ footer {
   justify-content: center;
   font-size: 12px;
   flex-shrink: 0;
+}
+
+.verified-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffffff;
+  background-color: #4caf50;
+  border-radius: 9999px;
+  height: 16px;
+  width: 16px;
+  vertical-align: middle;
+  line-height: 1;
+  padding-bottom: 1px;
 }
 
 .script-meta {
