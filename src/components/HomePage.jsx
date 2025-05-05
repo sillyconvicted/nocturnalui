@@ -25,7 +25,7 @@ export default function HomePage() {
         </div>
         
         <div className="action-hint">
-          <p>Click on "Scripts" to get started!</p>
+          <p>Click on "Main" in the sidebar to get started!</p>
         </div>
       </div>
     </div>
