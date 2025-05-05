@@ -4,7 +4,7 @@ APP_NAME="Nocturnal UI"
 APP_BUNDLE_ID="com.nocturnal.ui"
 VERSION="1.0.0"
 DATA_DIRECTORY="Nocturnal"
-DOWNLOAD_URL="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.0.0-alpha.1/Nocturnal.UI.app.zip"
+DOWNLOAD_URL="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.0.0-beta.1/Nocturnal.UI.app.zip"
 
 BG_BLACK='\033[40m'
 FG_WHITE='\033[97m'
