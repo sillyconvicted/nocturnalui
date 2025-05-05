@@ -11,6 +11,7 @@ export default function TitleBar({ isSaving }) {
   const [isMaximized, setIsMaximized] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [macosButtons, setMacosButtons] = useState(true); 
 
   useEffect(() => {
     setElectronAvailable(typeof window !== 'undefined' && window.electron !== undefined);
@@ -48,7 +49,7 @@ export default function TitleBar({ isSaving }) {
             setAutoSaveEnabled(result.data.autoSave !== undefined ? result.data.autoSave : true);
           }
         } catch (error) {
-          console.error("Error loading auto-save setting:", error);
+          console.error(error);
         }
       }
     };
@@ -58,6 +59,39 @@ export default function TitleBar({ isSaving }) {
     const handleSettingsChanged = (event) => {
       if (event.detail && event.detail.settings) {
         setAutoSaveEnabled(event.detail.settings.autoSave);
+        if (event.detail.settings.autoSave) {
+          setHasUnsavedChanges(false);
+        }
+      }
+    };
+    
+    window.addEventListener('settings-changed', handleSettingsChanged);
+    return () => {
+      window.removeEventListener('settings-changed', handleSettingsChanged);
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (typeof window.electron !== 'undefined') {
+        try {
+          const result = await window.electron.invoke('load-settings');
+          if (result.success) {
+            setAutoSaveEnabled(result.data.autoSave !== undefined ? result.data.autoSave : true);
+            setMacosButtons(result.data.macosButtons !== undefined ? result.data.macosButtons : false);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    };
+    
+    loadSettings();
+    
+    const handleSettingsChanged = (event) => {
+      if (event.detail && event.detail.settings) {
+        setAutoSaveEnabled(event.detail.settings.autoSave);
+        setMacosButtons(event.detail.settings.macosButtons);
         if (event.detail.settings.autoSave) {
           setHasUnsavedChanges(false);
         }
@@ -118,6 +152,26 @@ export default function TitleBar({ isSaving }) {
   return (
     <div className="title-bar">
       <div className="app-title-container">
+        {electronAvailable && macosButtons && (
+          <div className="window-controls macos-style">
+            <button className="window-control macos close" onClick={handleClose} title="Close">
+              <svg width="12" height="12" viewBox="0 0 12 12">
+                <path d="M6 5l4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4 1-1 4 4z" fill="currentColor" />
+              </svg>
+            </button>
+            <button className="window-control macos minimize" onClick={handleMinimize} title="Minimize">
+              <svg width="12" height="12" viewBox="0 0 12 12">
+                <path d="M2 6h8v1H2z" fill="currentColor" />
+              </svg>
+            </button>
+            <button className="window-control macos maximize" onClick={handleMaximize} title={isMaximized ? "Restore" : "Maximize"}>
+              <svg width="12" height="12" viewBox="0 0 12 12">
+                <path d="M3 3v6h6V3H3zm1 1h4v4H4V4z" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         <span className="app-title">Nocturnal UI</span>
         
         {electronAvailable && (
@@ -125,7 +179,7 @@ export default function TitleBar({ isSaving }) {
             <span className="title-separator">|</span>
             <div className="connection-status">
               {connectionStatus.checking ? (
-                <span className="connection-checking">Checking...</span>
+                <span className="connection-checking">Not connected</span>
               ) : connectionStatus.connected ? (
                 <span className="connection-connected">Connected</span>
               ) : (
@@ -134,12 +188,10 @@ export default function TitleBar({ isSaving }) {
             </div>
           </>
         )}
-        
-        {!autoSaveEnabled && hasUnsavedChanges && <span className="unsaved-indicator">unsaved</span>}
       </div>
 
-      {electronAvailable && (
-        <div className="window-controls">
+      {electronAvailable && !macosButtons && (
+        <div className="window-controls windows-style">
           <button className="window-control" onClick={handleMinimize} title="Minimize">
             <svg width="10" height="10" viewBox="0 0 10 1">
               <path d="M0 0h10v1H0z" fill="currentColor" />

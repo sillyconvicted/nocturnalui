@@ -11,13 +11,14 @@ export default function SettingsPage({ onSaveTabsManually }) {
     minimap: false,
     autoSave: true,
     lineNumbers: true,
+    macosButtons: false, 
     hydrogenPortScanStart: 6969,
     hydrogenPortScanEnd: 7069
   });
   
   const [isElectron, setIsElectron] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState("");
+  const [saveStatus, setSaveStatus] = useState(null);
+  const [settingsChanged, setSettingsChanged] = useState(false);
 
   useEffect(() => {
     setIsElectron(typeof window !== 'undefined' && window.electron !== undefined);
@@ -40,36 +41,56 @@ export default function SettingsPage({ onSaveTabsManually }) {
     }
   }, []);
   
+  useEffect(() => {
+    setSettingsChanged(true);
+    
+    if (isElectron && Object.keys(settings).length > 0) {
+      const timer = setTimeout(() => {
+        saveSettings();
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [settings]);
+  
   const saveSettings = async () => {
     if (!isElectron) return;
     
     try {
+      setSaveStatus("saving");
       const result = await window.electron.invoke('save-settings', settings);
+      
       if (result.success) {
         window.dispatchEvent(new CustomEvent('settings-changed', {
           detail: { settings }
         }));
+        
+        setSaveStatus("saved");
+        setSettingsChanged(false);
+        
+        setTimeout(() => {
+          setSaveStatus(null);
+        }, 2000);
         
         if (!settings.autoSave) {
           setTimeout(() => {
             if (onSaveTabsManually) onSaveTabsManually();
           }, 300);
         }
+      } else {
+        setSaveStatus("error");
+        setTimeout(() => {
+          setSaveStatus(null);
+        }, 3000);
       }
     } catch (error) {
       console.error(error);
+      setSaveStatus("error");
+      setTimeout(() => {
+        setSaveStatus(null);
+      }, 3000);
     }
   };
-  
-  useEffect(() => {
-    if (isElectron && Object.keys(settings).length > 0) {
-      const timer = setTimeout(() => {
-        saveSettings();
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [settings]);
   
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -101,26 +122,57 @@ export default function SettingsPage({ onSaveTabsManually }) {
       }));
     }
   };
+  
+  const renderSaveStatus = () => {
+    if (!saveStatus) return null;
+    
+    let statusClass = "";
+    let statusText = "";
+    
+    switch(saveStatus) {
+      case "saving":
+        statusClass = "saving-indicator";
+        statusText = "";
+        break;
+      case "saved":
+        statusClass = "saved-indicator";
+        statusText = "";
+        break;
+      case "error":
+        statusClass = "unsaved-indicator";
+        statusText = "";
+        break;
+      default:
+        return null;
+    }
+    
+    return <span className={statusClass}>{statusText}</span>;
+  };
 
   return (
     <div className="settings-page">
       <div className="settings-container">
-        <h1 className="settings-title">Settings</h1>
-        <p className="settings-subtitle">Configure your preferences for Nocturnal UI</p>
+        <div className="settings-header">
+          <h1 className="settings-title">Settings</h1>
+        </div>
+        <p className="settings-subtitle">Customize Nocturnal UI to match your workflow</p>
         
         <div className="settings-section">
-          <h2 className="settings-section-title">Editor</h2>
+          <h2 className="settings-section-title">Editor Preferences</h2>
           
           <div className="settings-row">
             <label className="settings-label">Font Size</label>
-            <input 
-              type="number" 
-              className="settings-input" 
-              value={settings.fontSize} 
-              onChange={(e) => handleNumberChange('fontSize', e.target.value)}
-              min={8}
-              max={32}
-            />
+            <div className="settings-control">
+              <input 
+                type="number" 
+                className="settings-input" 
+                value={settings.fontSize} 
+                onChange={(e) => handleNumberChange('fontSize', e.target.value)}
+                min={8}
+                max={32}
+              />
+              <span className="settings-unit">px</span>
+            </div>
           </div>
           
           <div className="settings-row">
@@ -151,7 +203,7 @@ export default function SettingsPage({ onSaveTabsManually }) {
           </div>
           
           <div className="settings-row">
-            <label className="settings-label">Minimap</label>
+            <label className="settings-label">Show Minimap</label>
             <div className="settings-toggle">
               <input 
                 type="checkbox" 
@@ -165,7 +217,7 @@ export default function SettingsPage({ onSaveTabsManually }) {
           </div>
           
           <div className="settings-row">
-            <label className="settings-label">Line Numbers</label>
+            <label className="settings-label">Show Line Numbers</label>
             <div className="settings-toggle">
               <input 
                 type="checkbox" 
@@ -180,31 +232,34 @@ export default function SettingsPage({ onSaveTabsManually }) {
         </div>
         
         <div className="settings-section">
-          <h2 className="settings-section-title">Application</h2>
+          <h2 className="settings-section-title">Application Settings</h2>
           
           <div className="settings-row">
-            <label className="settings-label">Auto Save</label>
-            <div className="settings-info">
-              <div className="settings-toggle">
-                <input 
-                  type="checkbox" 
-                  id="auto-save" 
-                  className="toggle-checkbox" 
-                  checked={settings.autoSave}
-                  onChange={(e) => handleChange('autoSave', e.target.checked)}
-                />
-                <label htmlFor="auto-save" className="toggle-label"></label>
-              </div>
-              <p className="settings-description">
-                {settings.autoSave 
-                  ? "Changes are saved automatically" 
-                  : "Use Cmd+S to save changes"}
+            <div className="settings-label-group">
+              <label className="settings-label">Auto Save Scripts</label>
+              <p className="settings-description-inline">
+                {settings.autoSave ? "Changes are saved automatically" : "Use Cmd+S (or Ctrl+S) to save changes"}
               </p>
+            </div>
+            <div className="settings-toggle">
+              <input 
+                type="checkbox" 
+                id="auto-save" 
+                className="toggle-checkbox" 
+                checked={settings.autoSave}
+                onChange={(e) => handleChange('autoSave', e.target.checked)}
+              />
+              <label htmlFor="auto-save" className="toggle-label"></label>
             </div>
           </div>
           
           <div className="settings-row">
-            <label className="settings-label">Hydrogen Port Range</label>
+            <div className="settings-label-group">
+              <label className="settings-label">Hydrogen Port Range</label>
+              <p className="settings-description-inline">
+                Range of ports to scan for Hydrogen server
+              </p>
+            </div>
             <div className="port-range-inputs">
               <input 
                 type="number" 
@@ -225,12 +280,32 @@ export default function SettingsPage({ onSaveTabsManually }) {
               />
             </div>
           </div>
+
+          <div className="settings-row">
+            <div className="settings-label-group">
+              <label className="settings-label">macOS Window Controls</label>
+              <p className="settings-description-inline">
+                cant get this to work smh
+              </p>
+            </div>
+            <div className="settings-toggle">
+              <input 
+                type="checkbox" 
+                id="macos-buttons" 
+                className="toggle-checkbox"
+                disabled={true}
+                checked={settings.macosButtons}
+                onChange={(e) => handleChange('macosButtons', e.target.checked)}
+              />
+              <label htmlFor="macos-buttons" className="toggle-label"></label>
+            </div>
+          </div>
         </div>
         
         <div className="settings-actions">
           {!isElectron && (
             <div className="browser-mode-message">
-              Nocturnal UI is designed to run as a desktop application
+              why are you here !!!!!!!!
             </div>
           )}
         </div>
