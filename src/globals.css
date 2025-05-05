@@ -1607,9 +1607,9 @@ footer {
 }
 
 .refresh-button {
-  background-color: var(--secondary-bg) !important;
-  color: var(--foreground) !important;
-  border: 1px solid var(--border);
+  background-color: transparent !important;
+  color: var(--accent) !important;
+  border: 0px solid var(--border);
   padding: 4px 12px;
   border-radius: 4px;
   font-size: 13px;
@@ -1619,7 +1619,7 @@ footer {
 }
 
 .refresh-button:hover {
-  background-color: var(--hover-bg) !important;
+  color: var(--foreground) !important;
 }
 
 .refresh-button:disabled {
@@ -1744,26 +1744,6 @@ footer {
   background-color: transparent !important;
 }
 
-.refresh-button {
-  background-color: var(--secondary-bg) !important;
-  color: var(--foreground) !important;
-  border: 1px solid var(--border);
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.refresh-button:hover {
-  background-color: var(--hover-bg) !important;
-}
-
-.refresh-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background-color: var(--secondary-bg) !important;
-}
 
 .last-refresh {
   padding: 6px 16px;
@@ -1840,13 +1820,6 @@ button {
   font-family: var(--font-sans);
 }
 
-button,
-.refresh-button,
-.search-button,
-.script-use-btn {
-  background-color: var(--secondary-bg) !important;
-  color: var(--foreground) !important;
-}
 
 button:not(.btn-primary):not(.window-control) {
   background-color: var(--secondary-bg);
