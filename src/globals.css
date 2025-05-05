@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
   --foreground: #ffffff;
@@ -13,6 +12,7 @@
   --tab-height: 34px;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   --font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-display: 'Poppins', var(--font-sans);
 }
 
 body {
@@ -654,11 +654,11 @@ footer {
 }
 
 .welcome-title {
+  font-family: var(--font-display);
   font-size: 28px;
   font-weight: 600;
   margin-bottom: 8px;
   text-align: center;
-  font-family: var(--font-sans);
 }
 
 .welcome-subtitle {
@@ -690,10 +690,10 @@ footer {
 }
 
 .changelog-title {
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 16px;
-  font-family: var(--font-sans);
 }
 
 .changelog-list {
@@ -736,10 +736,10 @@ footer {
 }
 
 .settings-title {
+  font-family: var(--font-display);
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 12px;
-  font-family: var(--font-sans);
   letter-spacing: -0.5px;
 }
 
@@ -1353,6 +1353,7 @@ footer {
 }
 
 .scripthub-title {
+  font-family: var(--font-display);
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 16px;
@@ -1364,6 +1365,7 @@ footer {
 }
 
 .search-input {
+  font-family: var(--font-sans);
   flex: 1;
   padding: 10px 16px;
   border-radius: 6px;
@@ -1380,6 +1382,7 @@ footer {
 }
 
 .search-button {
+  font-family: var(--font-sans);
   padding: 10px 20px;
   border-radius: 6px;
   background-color: rgba(255, 255, 255, 0.1);
@@ -1421,7 +1424,6 @@ footer {
 }
 
 .script-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border-color: rgba(255, 255, 255, 0.2);
 }
@@ -1445,6 +1447,7 @@ footer {
 }
 
 .script-title {
+  font-family: var(--font-sans);
   display: block;
   flex: 1;
   margin: 0;
@@ -1498,6 +1501,7 @@ footer {
 }
 
 .script-use-btn {
+  font-family: var(--font-sans);
   margin-top: auto;
   padding: 8px 12px;
   background-color: rgba(255, 255, 255, 0.1);
