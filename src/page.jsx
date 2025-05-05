@@ -8,6 +8,7 @@ import SettingsPage from "./components/SettingsPage";
 import TitleBar from "./components/TitleBar";
 import ConsolePage from "./components/ConsolePage";
 import EditorPreload from "./components/EditorPreload";
+import ScriptHub from "./components/ScriptHub";
 
 const DEFAULT_TAB = { id: 'default', name: 'Script 1', code: 'print("Hello, Hydrogen!")' };
 
@@ -261,15 +262,29 @@ export default function Home() {
 
   const sidebarItems = [
     { id: 'home', name: 'Home', icon: '' },
-    { id: 'scripts', name: 'Scripts', icon: '' },
+    { id: 'main', name: 'Main', icon: '' },
+    { id: 'scripthub', name: 'ScriptHub', icon: '' },
     { id: 'settings', name: 'Settings', icon: '' },
   ];
+
+  const handleScriptSelect = (scriptName, scriptCode) => {
+    const newId = uuidv4();
+    const newTab = {
+      id: newId,
+      name: scriptName || `Script ${scriptTabs.length + 1}`,
+      code: scriptCode || '-- Empty script'
+    };
+    
+    setScriptTabs([...scriptTabs, newTab]);
+    setActiveTabId(newId);
+    setActiveSidebarItem('main');
+  };
 
   const renderMainContent = () => {
     switch (activeSidebarItem) {
       case "home":
         return <HomePage />;
-      case "scripts":
+      case "main":
         return (
           <>
             <Tabs 
@@ -290,7 +305,8 @@ export default function Home() {
             </div>
           </>
         );
-      
+      case "scripthub":
+        return <ScriptHub onSelectScript={handleScriptSelect} />;
       case "console":
         return <ConsolePage />;
       case "settings":
