@@ -13,6 +13,11 @@ let powerSaveBlockerId = null;
 const NOCTURNAL_FOLDER = path.join(os.homedir(), 'Nocturnal');
 const TABS_FILE = path.join(NOCTURNAL_FOLDER, 'tabs.json');
 const SETTINGS_FILE = path.join(NOCTURNAL_FOLDER, 'settings.json');
+const AUTO_EXECUTE_FOLDER = path.join(NOCTURNAL_FOLDER, 'autoexecute');
+let autoExecuteFiles = [];
+let lastJoinTimestamp = 0;
+let lastCheckedLogTimestamp = null;
+let joinCheckInterval = null;
 
 process.on('uncaughtException', (error) => {
   dialog.showErrorBox('Error', `Join our discord server.`);
@@ -20,7 +25,10 @@ process.on('uncaughtException', (error) => {
 
 function initializeNocturnal() {
   ensureNocturnalDir();
+  ensureAutoExecuteDir();
   initializeLogging();
+  startLogMonitoring();
+  loadAutoExecuteFiles();
   
   discordRPC.initRPC().catch(console.error);
   
@@ -141,6 +149,16 @@ function ensureNocturnalDir() {
     try {
       fs.mkdirSync(NOCTURNAL_FOLDER, { recursive: true });
     } catch (error) {
+    }
+  }
+}
+
+function ensureAutoExecuteDir() {
+  if (!fs.existsSync(AUTO_EXECUTE_FOLDER)) {
+    try {
+      fs.mkdirSync(AUTO_EXECUTE_FOLDER, { recursive: true });
+    } catch (error) {
+      console.error(error);
     }
   }
 }
@@ -268,7 +286,7 @@ let isAppInBackground = false;
 
 function isNextJSRunning() {
   return new Promise((resolve) => {
-    const req = http.get('http://localhost:3000', (res) => {
+    const req = http.get('http://localhost:3969', (res) => {
       res.on('data', () => {}); 
       res.on('end', () => {
         resolve(res.statusCode >= 200 && res.statusCode < 400);
@@ -445,7 +463,7 @@ async function createWindow() {
     const isNextReady = await waitForNextJS();
     
     if (isNextReady) {
-      mainWindow.loadURL('http://localhost:3000');
+      mainWindow.loadURL('http://localhost:3969');
       mainWindow.show();
     } else {
       app.quit();
@@ -540,7 +558,16 @@ function parseLogEntries(logContent) {
           'clientruninfo',
           'updatecontroller',
           'appdelegate',
-          'settingsurl'
+          'settingsurl',
+          'graphics',
+          'surfacecontroller',
+          'network',
+          'singlesurfaceapp',
+          'iscovery-ota',
+          '_inexperiencepatch',
+          '_universalapppatch',
+          'audiofocusservice',
+          'datamodelpatchconfigurer'
         ];
         
         const messageLower = message.toLowerCase();
@@ -572,6 +599,98 @@ function parseLogEntries(logContent) {
     filteredCount: filteredEntries,
     totalCount: totalEntries
   };
+}
+
+function loadAutoExecuteFiles() {
+  try {
+    if (fs.existsSync(AUTO_EXECUTE_FOLDER)) {
+      autoExecuteFiles = fs.readdirSync(AUTO_EXECUTE_FOLDER)
+        .filter(file => file.endsWith('.lua') || file.endsWith('.txt'))
+        .map(file => path.join(AUTO_EXECUTE_FOLDER, file))
+        .sort();
+    }
+  } catch (error) {
+    console.error(error);
+    autoExecuteFiles = [];
+  }
+}
+
+function startLogMonitoring() {
+  try {
+    fs.watch(AUTO_EXECUTE_FOLDER, (eventType, filename) => {
+      if (filename && (filename.endsWith('.lua') || filename.endsWith('.txt'))) {
+        loadAutoExecuteFiles();
+      }
+    });
+  } catch (error) {
+    console.error(error);
+  }
+  
+  joinCheckInterval = setInterval(checkForRecentGameJoin, 5000);
+}
+
+async function checkForRecentGameJoin() {
+  if (autoExecuteFiles.length === 0 || !currentHydrogenPort) return;
+  
+  try {
+    const robloxLogsPath = path.join(os.homedir(), 'Library', 'Logs', 'Roblox');
+    if (!fs.existsSync(robloxLogsPath)) return;
+    
+    const files = fs.readdirSync(robloxLogsPath)
+      .filter(file => file.endsWith('.log'))
+      .map(file => {
+        const filePath = path.join(robloxLogsPath, file);
+        const stats = fs.statSync(filePath);
+        return { name: file, path: filePath, mtime: stats.mtime };
+      })
+      .sort((a, b) => b.mtime - a.mtime);
+    
+    if (files.length === 0) return;
+    
+    const latestLog = files[0];
+    const logContent = fs.readFileSync(latestLog.path, 'utf8');
+    
+    const lines = logContent.split('\n');
+    const joinLines = lines.filter(line => {
+      return line.includes('[FLog::Output] ! Joining game');
+    });
+    
+    if (joinLines.length === 0) return;
+    
+    const timestamp = getTimestampFromLogLine(joinLines[joinLines.length - 1]);
+    if (!timestamp) return;
+    
+    const joinTime = new Date(timestamp).getTime();
+    const now = Date.now();
+    const isRecentJoin = now - joinTime < 30000; 
+    const isNewJoin = lastCheckedLogTimestamp === null || joinTime > lastCheckedLogTimestamp;
+    
+    if (isRecentJoin && isNewJoin && now - lastJoinTimestamp > 60000) {
+      lastJoinTimestamp = now;
+      lastCheckedLogTimestamp = joinTime;
+      
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      for (const filePath of autoExecuteFiles) {
+        try {
+          const scriptContent = fs.readFileSync(filePath, 'utf8');
+          await executeScript(scriptContent);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    }
+
+    if (lastCheckedLogTimestamp === null || joinTime > lastCheckedLogTimestamp) {
+      lastCheckedLogTimestamp = joinTime;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function getTimestampFromLogLine(line) {
+  const match = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/);
+  return match ? match[1] : null;
 }
 
 initializeNocturnal();
@@ -628,6 +747,95 @@ ipcMain.on('window-close', () => {
   if (mainWindow) mainWindow.close();
 });
 
+ipcMain.handle('execute-auto-scripts', async () => {
+  try {
+    if (autoExecuteFiles.length === 0) {
+      return { 
+        success: false, 
+        message: "No auto-execute scripts found."
+      };
+    }
+    
+    const results = [];
+    for (const filePath of autoExecuteFiles) {
+      try {
+        const scriptContent = fs.readFileSync(filePath, 'utf8');
+        const fileName = path.basename(filePath);
+        
+        const result = await executeScript(scriptContent);
+        results.push({ 
+          file: fileName, 
+          success: result.success,
+          message: result.success ? "Executed successfully" : result.message
+        });
+      } catch (error) {
+        results.push({ 
+          file: path.basename(filePath), 
+          success: false,
+          message: error.message
+        });
+      }
+    }
+    
+    return { 
+      success: true, 
+      results,
+      count: autoExecuteFiles.length
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      message: error.message
+    };
+  }
+});
+
+ipcMain.handle('open-autoexec-folder', () => {
+  try {
+    if (!fs.existsSync(AUTO_EXECUTE_FOLDER)) {
+      ensureAutoExecuteDir();
+    }
+    
+    const { shell } = require('electron');
+    shell.openPath(AUTO_EXECUTE_FOLDER);
+    
+    return { success: true, path: AUTO_EXECUTE_FOLDER };
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-autoexec-info', () => {
+  try {
+    const scriptInfo = autoExecuteFiles.map(filePath => {
+      try {
+        const stats = fs.statSync(filePath);
+        return {
+          name: path.basename(filePath),
+          path: filePath,
+          size: stats.size,
+          modified: stats.mtime
+        };
+      } catch (error) {
+        return {
+          name: path.basename(filePath),
+          path: filePath,
+          error: 'Could not read file'
+        };
+      }
+    });
+    
+    return { 
+      success: true, 
+      scripts: scriptInfo,
+      folder: AUTO_EXECUTE_FOLDER
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
@@ -643,6 +851,11 @@ app.on('activate', () => {
 app.on('before-quit', () => {
   if (powerSaveBlockerId !== null) {
     powerSaveBlocker.stop(powerSaveBlockerId);
+  }
+  
+  if (joinCheckInterval) {
+    clearInterval(joinCheckInterval);
+    joinCheckInterval = null;
   }
   
   discordRPC.destroyRPC();

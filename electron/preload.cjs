@@ -38,6 +38,9 @@ contextBridge.exposeInMainWorld(
         'warm-up-monaco',
         'read-roblox-logs',
         'update-discord-status',
+        'execute-auto-scripts',
+        'open-autoexec-folder',
+        'get-autoexec-info'
       ];
       
       if (validChannels.includes(channel)) {

@@ -123,6 +123,16 @@ export default function SettingsPage({ onSaveTabsManually }) {
     }
   };
   
+  const handleOpenAutoExecuteFolder = async () => {
+    if (!isElectron) return;
+    
+    try {
+      await window.electron.invoke('open-autoexec-folder');
+    } catch (error) {
+      console.error('Failed to open auto-execute folder:', error);
+    }
+  };
+  
   const renderSaveStatus = () => {
     if (!saveStatus) return null;
     
@@ -299,6 +309,25 @@ export default function SettingsPage({ onSaveTabsManually }) {
               />
               <label htmlFor="macos-buttons" className="toggle-label"></label>
             </div>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h2 className="settings-section-title">Auto-Execute</h2>
+          
+          <div className="settings-row">
+            <div className="settings-label-group">
+              <label className="settings-label">Auto-Execute Folder</label>
+              <p className="settings-description-inline">
+                Scripts in this folder will run automatically when you join a game
+              </p>
+            </div>
+            <button 
+              className="btn-secondary"
+              onClick={handleOpenAutoExecuteFolder}
+            >
+              Open Folder
+            </button>
           </div>
         </div>
         

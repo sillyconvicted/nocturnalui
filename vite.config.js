@@ -5,16 +5,15 @@ import { resolve } from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './', // This is crucial for Electron to load assets properly
+  base: './', 
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: true,
-    // Make sure output can be found by Electron
     assetsDir: 'assets',
     rollupOptions: {
       output: {
-        manualChunks: undefined, // Keep it simple for Electron
+        manualChunks: undefined, 
       },
     },
   },
@@ -24,7 +23,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 3969,
     strictPort: true,
   },
 });
