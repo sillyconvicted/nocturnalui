@@ -4,7 +4,9 @@ APP_NAME="Nocturnal UI"
 APP_BUNDLE_ID="com.nocturnal.ui"
 VERSION="1.0.1"
 DATA_DIRECTORY="Nocturnal"
-DOWNLOAD_URL="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.0.1-alpha.1/Nocturnal.UI.app.zip"
+
+DOWNLOAD_URL_INTEL="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.0.1-alpha.2/Nocturnal.UI.Intel.app.zip"
+DOWNLOAD_URL_ARM="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.0.1-alpha.2/Nocturnal.UI-arm64.app.zip"
 
 BG_BLACK='\033[40m'
 FG_WHITE='\033[97m'
@@ -128,6 +130,29 @@ download_with_retry() {
     return 1
 }
 
+detect_architecture() {
+    print_section_header "DETECTING SYSTEM ARCHITECTURE"
+    
+    ARCH=$(uname -m)
+    
+    if [[ "$ARCH" == "arm64" ]]; then
+        info_msg "Detected Apple Silicon (ARM) Mac"
+        DOWNLOAD_URL="$DOWNLOAD_URL_ARM"
+    elif [[ "$ARCH" == "x86_64" ]]; then
+        if /usr/bin/arch -arm64 true 2>/dev/null; then
+            DOWNLOAD_URL="$DOWNLOAD_URL_INTEL"
+        else
+            info_msg "Detected Intel Mac"
+            DOWNLOAD_URL="$DOWNLOAD_URL_INTEL"
+        fi
+    else
+        warning_msg "Unknown architecture: $ARCH"
+        warning_msg "Defaulting to Intel version"
+        DOWNLOAD_URL="$DOWNLOAD_URL_INTEL"
+    fi
+    
+}
+
 print_section_header "INSTALLATION SETUP"
 
 if [ "$EUID" -ne 0 ]; then
@@ -138,6 +163,9 @@ if [ "$EUID" -ne 0 ]; then
     fi
     success_msg "Administrator access granted."
 fi
+
+# Detect architecture and set download URL
+detect_architecture
 
 print_section_header "DOWNLOADING $APP_NAME"
 
@@ -222,6 +250,7 @@ echo -e "${FG_YELLOW}${BOLD}Important Notes:${RESET}"
 echo -e "  ${FG_CYAN}•${RESET} $APP_NAME has been installed to your Applications folder"
 echo -e "  ${FG_CYAN}•${RESET} Data and configuration will be stored in ~/$DATA_DIRECTORY"
 echo -e "  ${FG_CYAN}•${RESET} For an optimal experience, ensure your macOS is up-to-date"
+echo -e "  ${FG_CYAN}•${RESET} ${FG_GREEN}Installed version: For $([ "$(uname -m)" == "arm64" ] && echo "Apple Silicon" || echo "Intel") Mac${RESET}"
 
 echo -e "\n${FG_GREEN}${BOLD}Thank you for installing $APP_NAME!${RESET}\n"
 
