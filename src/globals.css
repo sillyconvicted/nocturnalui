@@ -1693,7 +1693,7 @@ footer {
   border: 0px solid var(--border);
   padding: 4px 12px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.2s;
   font-family: var(--font-sans);
@@ -1707,6 +1707,10 @@ footer {
   opacity: 0.5;
   cursor: not-allowed;
   background-color: var(--secondary-bg) !important;
+}
+
+.refresh-button:active {
+  transform: translateY(1.5px);
 }
 
 .last-refresh {

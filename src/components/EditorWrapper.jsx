@@ -46,9 +46,6 @@ export default function EditorWrapper({ code, setCode, onExecute, tabName }) {
         setCode={setCode} 
         onExecute={handleExecute} 
       />
-      <button className="btn-execute" onClick={handleExecute}>
-        <span className="execute-icon">▶</span> Execute
-      </button>
     </div>
   );
 }
