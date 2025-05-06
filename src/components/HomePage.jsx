@@ -10,13 +10,17 @@ export default function HomePage() {
         </p>
         
         <div className="version-info-box">
-          <div className="version">v1.0.0-beta.1</div>
-          <div className="build-date">May 5, 2025</div>
+          <div className="version">v1.0.1-alpha.1</div>
+          <div className="build-date">May 6, 2025</div>
         </div>
         
         <div className="changelog-box">
           <h2 className="changelog-title">Recent Updates</h2>
           <ul className="changelog-list">
+          <li>
+              <div className="changelog-version">1.0.1-alpha.1</div>
+              <div className="changelog-text">Added Discord RPC, Auto execute and more</div>
+            </li>
           <li>
               <div className="changelog-version">1.0.0-beta.1</div>
               <div className="changelog-text">Join our discord server!</div>
