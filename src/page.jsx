@@ -326,7 +326,7 @@ export default function Home() {
     { id: 'home', name: 'Home', icon: '' },
     { id: 'main', name: 'Main', icon: '' },
     { id: 'console', name: 'Logs', icon: '' },
-    { id: 'scripthub', name: 'ScriptHub', icon: '' },
+    { id: 'scripthub', name: 'Script Library', icon: '' },
     { id: 'settings', name: 'Settings', icon: '' },
   ];
 

@@ -557,7 +557,6 @@ select, input {
 }
 
 .window-controls.windows-style .window-control.close:hover {
-  background-color: #e81123 !important;
   opacity: 1;
 }
 

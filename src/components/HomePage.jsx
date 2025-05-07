@@ -18,6 +18,10 @@ export default function HomePage() {
           <h2 className="changelog-title">Recent Updates</h2>
           <ul className="changelog-list">
           <li>
+              <div className="changelog-version">1.0.1-beta.1</div>
+              <div className="changelog-text">Added Local Script Library</div>
+            </li>
+          <li>
               <div className="changelog-version">1.0.1-alpha.1</div>
               <div className="changelog-text">Added Discord RPC, Auto execute and more</div>
             </li>
