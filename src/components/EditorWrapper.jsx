@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import MonacoEditor from "./MonacoEditor";
 
-export default function EditorWrapper({ code, setCode, onExecute, tabName }) {
+export default function EditorWrapper({ code, setCode, onExecute, tabName, tabId, isTabSwitching }) {
   useEffect(() => {
     const updateDiscordStatus = async () => {
       if (typeof window.electron !== 'undefined') {
@@ -21,7 +21,6 @@ export default function EditorWrapper({ code, setCode, onExecute, tabName }) {
     };
     
     updateDiscordStatus();
-    
   }, [tabName]);
 
   const handleExecute = async () => {
@@ -44,7 +43,9 @@ export default function EditorWrapper({ code, setCode, onExecute, tabName }) {
       <MonacoEditor 
         code={code} 
         setCode={setCode} 
-        onExecute={handleExecute} 
+        onExecute={handleExecute}
+        tabId={tabId}
+        isTabSwitching={isTabSwitching} 
       />
     </div>
   );

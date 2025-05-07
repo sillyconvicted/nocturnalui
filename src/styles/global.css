@@ -1,0 +1,19 @@
+.monaco-editor-container {
+  min-height: 300px;
+  height: 100%;
+  position: relative;
+  transform: translateZ(0);
+}
+
+.monaco-editor, .monaco-editor-background {
+  will-change: transform;
+}
+
+.editor-container {
+  contain: content;
+  position: relative;
+}
+
+.monaco-editor-hidden {
+  visibility: hidden;
+}

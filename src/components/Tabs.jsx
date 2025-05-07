@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Tabs({ 
   tabs, 
@@ -8,7 +9,8 @@ export default function Tabs({
   setActiveTab, 
   onNewTab, 
   onCloseTab, 
-  onRenameTab
+  onRenameTab,
+  getCurrentTabCode
 }) {
   const [editingTabId, setEditingTabId] = useState(null);
   const [newTabName, setNewTabName] = useState("");
@@ -77,6 +79,57 @@ export default function Tabs({
         animation: true
       });
     }
+  };
+
+  const saveToLocalLibrary = async (tabId) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    
+    const code = getCurrentTabCode ? getCurrentTabCode(tabId) : tab.code;
+    
+    const newLocalScript = {
+      id: uuidv4(),
+      title: tab.name,
+      code: code || '',
+      dateSaved: new Date().toISOString(),
+      game: ''
+    };
+    
+    try {
+      let localLibrary = [];
+      
+      if (typeof window.electron !== 'undefined') {
+        const result = await window.electron.invoke('load-local-scripts');
+        if (result.success) {
+          localLibrary = result.scripts || [];
+        }
+      } else {
+        try {
+          const savedLibrary = localStorage.getItem('nocturnal-local-scripts');
+          if (savedLibrary) {
+            localLibrary = JSON.parse(savedLibrary);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      localLibrary.push(newLocalScript);
+      
+      if (typeof window.electron !== 'undefined') {
+        await window.electron.invoke('save-local-scripts', localLibrary);
+
+        window.electron.invoke('show-notification', {
+          title: 'Script Saved',
+          body: `"${tab.name}" has been saved to your local library.`
+        }).catch(console.error);
+      } else {
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+    setContextMenu({ ...contextMenu, visible: false, animation: false });
   };
 
   useEffect(() => {
@@ -164,7 +217,7 @@ export default function Tabs({
           style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
         >
           <div 
-            className="context-menu-item"
+            className="context-menu-item rename-item"
             onClick={() => {
               handleDoubleClick(contextMenu.tabId, tabs.find(tab => tab.id === contextMenu.tabId)?.name || '');
               setContextMenu({ ...contextMenu, visible: false, animation: false });
@@ -173,7 +226,15 @@ export default function Tabs({
             Rename
           </div>
           <div 
-            className="context-menu-item"
+            className="context-menu-item save-item"
+            onClick={() => {
+              saveToLocalLibrary(contextMenu.tabId);
+            }}
+          >
+            Save to Local Library
+          </div>
+          <div 
+            className="context-menu-item close-item"
             onClick={() => {
               onCloseTab(contextMenu.tabId);
               setContextMenu({ ...contextMenu, visible: false, animation: false });

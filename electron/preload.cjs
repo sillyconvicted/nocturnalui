@@ -40,7 +40,10 @@ contextBridge.exposeInMainWorld(
         'update-discord-status',
         'execute-auto-scripts',
         'open-autoexec-folder',
-        'get-autoexec-info'
+        'get-autoexec-info',
+        'load-local-scripts',
+        'save-local-scripts',
+        'show-notification'
       ];
       
       if (validChannels.includes(channel)) {

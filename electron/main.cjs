@@ -142,6 +142,52 @@ function initializeNocturnal() {
       return { success: false, error: error.message };
     }
   });
+
+  const LOCAL_SCRIPTS_FILE = path.join(NOCTURNAL_FOLDER, 'local-scripts.json');
+
+  ipcMain.handle('load-local-scripts', async () => {
+    try {
+      if (fs.existsSync(LOCAL_SCRIPTS_FILE)) {
+        const data = fs.readFileSync(LOCAL_SCRIPTS_FILE, 'utf8');
+        return { 
+          success: true, 
+          scripts: JSON.parse(data),
+        };
+      } else {
+        return { 
+          success: true, 
+          scripts: [],
+        };
+      }
+    } catch (error) {
+      console.error(error);
+      return { 
+        success: false, 
+        error: error.message,
+      };
+    }
+  });
+
+  ipcMain.handle('save-local-scripts', async (event, scripts) => {
+    try {
+      fs.writeFileSync(LOCAL_SCRIPTS_FILE, JSON.stringify(scripts, null, 2), 'utf8');
+      return { success: true };
+    } catch (error) {
+      console.error(error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('show-notification', async (event, options) => {
+    try {
+      const { title, body } = options;
+      new Notification({ title, body }).show();
+      return { success: true };
+    } catch (error) {
+      console.error(error);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
 function ensureNocturnalDir() {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import Sidebar from "./components/Sidebar";
 import EditorWrapper from "./components/EditorWrapper";
@@ -20,8 +20,11 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
   const [isElectron, setIsElectron] = useState(false);
   const [isInBackground, setIsInBackground] = useState(false);
-  const [editorPreloaded, setEditorPreloaded] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  
+  const [isTabSwitching, setIsTabSwitching] = useState(false);
+  const tabSwitchTimeoutRef = useRef(null);
+  const lastEditedTabRef = useRef(null);
 
   useEffect(() => {
     setIsElectron(typeof window !== 'undefined' && window.electron !== undefined);
@@ -36,7 +39,6 @@ export default function Home() {
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     window.addEventListener('blur', () => setIsInBackground(true));
     window.addEventListener('focus', () => setIsInBackground(false));
     
@@ -73,14 +75,7 @@ export default function Home() {
       loadSavedTabs();
     }
   }, [isElectron]);
-  
 
-  useEffect(() => {
-    if (isInBackground) {
-    } else {
-    }
-  }, [isInBackground]);
-  
   useEffect(() => {
     const loadAutoSaveSetting = async () => {
       if (isElectron) {
@@ -146,7 +141,6 @@ export default function Home() {
     }
   }, [scriptTabs, activeTabId, isElectron, isInBackground, autoSaveEnabled]);
 
-
   const saveTabsManually = async () => {
     if (isElectron && scriptTabs.length > 0) {
       setIsSaving(true);
@@ -168,14 +162,60 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if (isTabSwitching) {
+      return;
+    }
+    
     const tab = scriptTabs.find(tab => tab.id === activeTabId);
     if (tab) {
-      setCurrentCode(tab.code);
+      setCurrentCode(tab.code || '');
     }
-  }, [activeTabId, scriptTabs]);
+  }, [activeTabId, scriptTabs, isTabSwitching]);
+
+  const handleTabSwitch = (newTabId) => {
+    if (isTabSwitching || newTabId === activeTabId) {
+      return;
+    }
+    
+    setIsTabSwitching(true);
+    
+    const blocker = document.createElement('div');
+    blocker.style.position = 'fixed';
+    blocker.style.top = '0';
+    blocker.style.left = '0';
+    blocker.style.right = '0';
+    blocker.style.bottom = '0';
+    blocker.style.zIndex = '9999';
+    blocker.style.backgroundColor = 'transparent';
+    document.body.appendChild(blocker);
+    
+    requestAnimationFrame(() => {
+      if (lastEditedTabRef.current === activeTabId) {
+        setScriptTabs(tabs => 
+          tabs.map(tab => 
+            tab.id === activeTabId ? { ...tab, code: currentCode } : tab
+          )
+        );
+      }
+      
+      setActiveTabId(newTabId);
+      
+      const newTab = scriptTabs.find(tab => tab.id === newTabId);
+      
+      if (newTab) {
+        setCurrentCode(newTab.code || '');
+      }
+      
+      setTimeout(() => {
+        document.body.removeChild(blocker);
+        setIsTabSwitching(false);
+      }, 150);
+    });
+  };
 
   const updateActiveTabCode = (newCode) => {
     setCurrentCode(newCode);
+    lastEditedTabRef.current = activeTabId;
     setScriptTabs(tabs => 
       tabs.map(tab => 
         tab.id === activeTabId ? { ...tab, code: newCode } : tab
@@ -191,7 +231,6 @@ export default function Home() {
 
     if (typeof window.electron !== 'undefined') {
       try {
-
         await window.electron.invoke('toggle-power-save-blocker', true);
         
         let checkResult;
@@ -214,13 +253,11 @@ export default function Home() {
 
         await window.electron.invoke('toggle-power-save-blocker', false);
         
-        if (result.success) {
-        } else {
+        if (!result.success) {
           alert(`${result.message}`);
         }
       } catch (error) {
         await window.electron.invoke('toggle-power-save-blocker', false);
-        
         console.error(error);
         alert(`${error.message}`);
       }
@@ -231,14 +268,15 @@ export default function Home() {
 
   const addNewTab = () => {
     const newId = uuidv4();
+    const defaultCode = '-- New script';
     const newTab = {
       id: newId,
       name: `Script ${scriptTabs.length + 1}`,
-      code: '-- New script'
+      code: defaultCode
     };
     
     setScriptTabs([...scriptTabs, newTab]);
-    setActiveTabId(newId);
+    handleTabSwitch(newId);
   };
 
   const closeTab = (tabId) => {
@@ -248,7 +286,7 @@ export default function Home() {
     setScriptTabs(newTabs);
     
     if (activeTabId === tabId) {
-      setActiveTabId(newTabs[newTabs.length - 1].id);
+      handleTabSwitch(newTabs[newTabs.length - 1].id);
     }
   };
 
@@ -260,6 +298,30 @@ export default function Home() {
     );
   };
 
+  const handleScriptSelect = (scriptName, scriptCode) => {
+    if (!scriptCode || scriptCode.trim() === '') {
+      alert('Cannot add an empty script');
+      return;
+    }
+    
+    const newId = uuidv4();
+    
+    const newTab = {
+      id: newId,
+      name: scriptName || `Script ${scriptTabs.length + 1}`,
+      code: scriptCode
+    };
+    
+    const updatedTabs = [...scriptTabs, newTab];
+    setScriptTabs(updatedTabs);
+    
+    setActiveSidebarItem('main');
+    
+    setTimeout(() => {
+      handleTabSwitch(newId);
+    }, 50);
+  };
+
   const sidebarItems = [
     { id: 'home', name: 'Home', icon: '' },
     { id: 'main', name: 'Main', icon: '' },
@@ -268,33 +330,25 @@ export default function Home() {
     { id: 'settings', name: 'Settings', icon: '' },
   ];
 
-  const handleScriptSelect = (scriptName, scriptCode) => {
-    const newId = uuidv4();
-    const newTab = {
-      id: newId,
-      name: scriptName || `Script ${scriptTabs.length + 1}`,
-      code: scriptCode || '-- Empty script'
-    };
-    
-    setScriptTabs([...scriptTabs, newTab]);
-    setActiveTabId(newId);
-    setActiveSidebarItem('main');
-  };
-
   const renderMainContent = () => {
     switch (activeSidebarItem) {
       case "home":
         return <HomePage />;
       case "main":
+        const activeTab = scriptTabs.find(tab => tab.id === activeTabId);
         return (
           <>
             <Tabs 
               tabs={scriptTabs}
               activeTab={activeTabId}
-              setActiveTab={setActiveTabId}
+              setActiveTab={handleTabSwitch}
               onNewTab={addNewTab}
               onCloseTab={closeTab}
               onRenameTab={renameTab}
+              getCurrentTabCode={(tabId) => {
+                return tabId === activeTabId ? currentCode : 
+                  scriptTabs.find(tab => tab.id === tabId)?.code || '';
+              }}
             />
             
             <div className="main-content-wrapper">
@@ -302,6 +356,9 @@ export default function Home() {
                 code={currentCode} 
                 setCode={updateActiveTabCode} 
                 onExecute={executeCode} 
+                tabName={activeTab?.name || "Script"}
+                tabId={activeTabId}
+                isTabSwitching={isTabSwitching}
               />
             </div>
           </>
@@ -320,8 +377,7 @@ export default function Home() {
   return (
     <div className="app-container">
       <EditorPreload />
-      
-      <TitleBar isSaving={false} />
+      <TitleBar isSaving={isSaving} />
       
       <Sidebar 
         items={sidebarItems}
