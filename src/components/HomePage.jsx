@@ -1,10 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function HomePage() {
+  const [clickCount, setClickCount] = useState(0);
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
+  
+  const handleTitleClick = () => {
+    const newCount = clickCount + 1;
+    setClickCount(newCount);
+    
+    if (newCount === 5) {
+      setShowEasterEgg(true);
+      setTimeout(() => {
+        setClickCount(0);
+        setShowEasterEgg(false);
+      }, 5000);
+    }
+  };
+
   return (
     <div className="home-page">
       <div className="home-container">
-        <h1 className="welcome-title">Welcome to Nocturnal UI</h1>
+        <h1 
+          className="welcome-title" 
+          onClick={handleTitleClick}
+          style={{ cursor: 'pointer' }}
+        >
+          Welcome to Nocturnal UI
+        </h1>
+        
+        {showEasterEgg && (
+          <div className="easter-egg-message mt-2 mb-4 text-center text-white animate-pulse">
+             copy this and paste it in a discord channel!: i-love-nocturnal9921
+          </div>
+        )}
+        
         <p className="welcome-subtitle">
           A minimalist scripting interface for Hydrogen
         </p>
@@ -37,7 +66,7 @@ export default function HomePage() {
         </div>
         
         <div className="action-hint">
-          <p>Click on "Main" in the sidebar to get started!</p>
+          <p>Click on "Editor" in the sidebar to get started!</p>
         </div>
       </div>
     </div>
