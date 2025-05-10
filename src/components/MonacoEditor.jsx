@@ -2,6 +2,9 @@
 
 import { useRef, useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
+import { setupLuaLanguage } from "../lib/luaLanguageSetup";
+import { injectMonacoIcons } from "../lib/monacoIconFont";
+import CommandPalette from "./CommandPalette";
 
 export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwitching, scriptTabs }) {
   const editorRef = useRef(null);
@@ -18,6 +21,9 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
   });
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [isCodeEmpty, setIsCodeEmpty] = useState(!code || code.trim() === '');
+  const [isEditorLoading, setIsEditorLoading] = useState(true);
+  const loadingTimeoutRef = useRef(null);
+  const [commandPaletteVisible, setCommandPaletteVisible] = useState(false);
   
   const modelCacheRef = useRef({});
   
@@ -208,49 +214,13 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
     monacoRef.current = monaco;
     window.editor = editor;
     
+    setIsEditorLoading(false);
+    
     if (editor.getDomNode()) {
       editor.getDomNode().classList.add('monaco-custom-editor');
     }
     
-    const styleSheet1 = document.createElement('style');
-    styleSheet1.textContent = `
-      .monaco-custom-editor .monaco-editor-background, 
-      .monaco-custom-editor .margin,
-      .monaco-custom-editor .monaco-editor-background {
-        border-color: transparent !important;
-      }
-      .no-focus-indicator * {
-        border-color: transparent !important;
-        outline: none !important;
-      }
-    `;
-    document.head.appendChild(styleSheet1);
-    
-    const styleSheet2 = document.createElement('style');
-    styleSheet2.textContent = `
-      .monaco-editor, 
-      .monaco-editor *, 
-      .monaco-editor-background, 
-      .monaco-editor .overflow-guard,
-      .monaco-editor .editor-scrollable,
-      .monaco-scrollable-element {
-        border-color: transparent !important;
-        outline: none !important;
-        box-shadow: none !important;
-      }
-      
-      .monaco-editor * {
-        transition: none !important;
-      }
-      
-      .monaco-editor.focused,
-      .monaco-editor.focused * {
-        outline: none !important;
-        border-color: transparent !important;
-      }
-    `;
-    document.head.appendChild(styleSheet2);
-    
+    setupLuaLanguage(monaco);
     
     const uri = monaco.Uri.parse(`inmemory://tab/${tabId}.lua`);
     let model = monaco.editor.getModel(uri);
@@ -273,37 +243,6 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {});
     }
     
-    editor.onDidChangeModelContent(() => {
-      if (isTabSwitching) return;
-      
-      if (!editor.getModel() || editor.getModel().uri.path !== `/tab/${tabId}.lua`) {
-        return;
-      }
-      
-      requestAnimationFrame(() => {
-        try {
-          const currentValue = editor.getValue();
-          
-          if (modelRef.current?.getValue() === currentValue) {
-            return;
-          }
-          
-          setIsCodeEmpty(!currentValue || currentValue.trim() === '');
-          setCode(currentValue);
-          
-          window.dispatchEvent(new CustomEvent('code-changed'));
-        } catch (error) {
-          console.error(error);
-        }
-      });
-      
-      if (Math.random() < 0.05) {
-        if (typeof window.electron !== 'undefined') {
-          window.electron.invoke('optimize-memory').catch(() => {});
-        }
-      }
-    });
-
     const originalAddEventListener = editor.onDidFocusEditorText;
     editor.onDidFocusEditorText = function(listener) {
       const originalDisposable = originalAddEventListener.call(this, function(...args) {
@@ -325,7 +264,65 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
       
       return originalDisposable;
     };
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, () => {
+      setCommandPaletteVisible(true);
+    });
+    
+    editor.addCommand(monaco.KeyCode.F1, () => {
+      setCommandPaletteVisible(true);
+    });
+    
+    window.addEventListener('execute-script', handleExecute);
+    window.addEventListener('clear-editor', () => setCode(""));
+    window.addEventListener('execute-tool', handleToolExecution);
   }
+
+  const handleToolExecution = async (event) => {
+    const toolId = event.detail?.toolId;
+    if (!toolId) return;
+    
+    if (typeof window.electron !== 'undefined') {
+      try {
+        await window.electron.invoke('toggle-power-save-blocker', true);
+        
+        let checkResult;
+        try {
+          checkResult = await window.electron.invoke('check-hydrogen');
+        } catch (connectionError) {
+          console.error(connectionError);
+          await window.electron.invoke('toggle-power-save-blocker', false);
+          return;
+        }
+        
+        if (!checkResult || !checkResult.connected) {
+          alert("Cannot connect to Hydrogen! Please make sure it's running.");
+          await window.electron.invoke('toggle-power-save-blocker', false);
+          return;
+        }
+        
+        const result = await window.electron.invoke('execute-tool', toolId);
+        await window.electron.invoke('toggle-power-save-blocker', false);
+        
+        if (!result.success) {
+        }
+      } catch (error) {
+        await window.electron.invoke('toggle-power-save-blocker', false);
+        console.error(error);
+      }
+    } else {
+      alert("NocturnalUI is not running in Electron...");
+    }
+  };
+
+  // Clean up event listeners
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('execute-script', handleExecute);
+      window.removeEventListener('clear-editor', () => {});
+      window.removeEventListener('execute-tool', handleToolExecution);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -408,8 +405,6 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
   }, [tabId, code, isTabSwitching]);
 
   useEffect(() => {
-    if (!editorRef.current) return;
-    
     if (isTabSwitching) {
       isUpdatingRef.current = true;
 
@@ -470,78 +465,33 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
     });
   }, [tabId, code, isTabSwitching]);
 
-  function handleEditorDidMount(editor, monaco) {
-    editorRef.current = editor;
-    monacoRef.current = monaco;
-    
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = `
-      .monaco-editor, .monaco-editor * {
-        outline: none !important;
-        border-color: transparent !important;
-      }
-    `;
-    document.head.appendChild(styleSheet);
-    
-    const uri = monaco.Uri.parse(`inmemory://tab/${tabId}.lua`);
-    let model = monaco.editor.getModel(uri);
-    
-    if (!model) {
-      model = monaco.editor.createModel(code || '', 'lua', uri);
-    } else if (model.getValue() !== code) {
-      model.setValue(code || '');
+  useEffect(() => {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
     }
     
-    modelCacheRef.current[tabId] = model;
-    editor.setModel(model);
-    modelRef.current = model;
-    previousTabIdRef.current = tabId;
+    if (isTabSwitching) {
+      setIsEditorLoading(true);
+    } else {
+      loadingTimeoutRef.current = setTimeout(() => {
+        setIsEditorLoading(false);
+      }, 100);
+    }
     
-    const originalFocusListener = editor.onDidFocusEditorText;
-    editor.onDidFocusEditorText = function(listener) {
-      return originalFocusListener.call(this, function(...args) {
-        if (!isUpdatingRef.current) {
-          listener(...args);
-        }
-      });
-    };
-    
-    const originalBlurListener = editor.onDidBlurEditorText;
-    editor.onDidBlurEditorText = function(listener) {
-      return originalBlurListener.call(this, function(...args) {
-        if (!isUpdatingRef.current) {
-          listener(...args);
-        }
-      });
-    };
-    
-    editor.onDidChangeModelContent(() => {
-      if (isTabSwitching || isUpdatingRef.current) return;
-      
-      if (!editor.getModel() || editor.getModel().uri.path !== `/tab/${tabId}.lua`) {
-        return;
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
       }
-      
-      requestAnimationFrame(() => {
-        try {
-          const currentValue = editor.getValue();
-          if (modelRef.current?.getValue() === currentValue) return;
-          
-          setIsCodeEmpty(!currentValue || currentValue.trim() === '');
-          setCode(currentValue);
-          window.dispatchEvent(new CustomEvent('code-changed'));
-        } catch (error) {
-          console.error(error);
-        }
-      });
-      
-      if (Math.random() < 0.05 && window.electron) {
-        window.electron.invoke('optimize-memory').catch(() => {});
+    };
+  }, [isTabSwitching]);
+
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
       }
-    });
-    
-    window.dispatchEvent(new CustomEvent('monaco-ready'));
-  }
+    };
+  }, []);
 
   const handleExecute = async () => {
     if (isCodeEmpty) return;
@@ -551,8 +501,14 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
   };
 
   return (
-    <div className="editor-container">
-      <div className={`monaco-editor-container`}>
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      <div className="flex-1 relative min-h-[100px] h-[calc(100%-52px)] overflow-hidden bg-[#121212] border-0">
+        {(isEditorLoading || isTabSwitching) && (
+          <div className="absolute inset-0 z-10 bg-[#121212] flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-t-transparent border-[#333333] rounded-full animate-spin"></div>
+          </div>
+        )}
+        
         <Editor
           height="100%"
           defaultLanguage="lua"
@@ -562,14 +518,17 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
             setCode(newValue);
           }}
           onMount={handleEditorDidMount}
+          loading={<div className="w-full h-full bg-[#121212]" />}
           theme="vs-dark"
           beforeMount={(monaco) => {
+            setIsEditorLoading(true);
+            
             monaco.editor.defineTheme('vs-dark', {
               base: 'vs-dark',
               inherit: true,
               rules: [],
               colors: {
-                'editor.background': '#1a1a1a',
+                'editor.background': '#121212',
                 'editor.foreground': '#ffffff',
                 'editorLineNumber.foreground': '#858585',
                 'editorLineNumber.activeForeground': '#c6c6c6',
@@ -584,50 +543,120 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
             minimap: { enabled: editorSettings.minimap },
             scrollBeyondLastLine: false,
             fontFamily: "JetBrains Mono, monospace",
-            smoothScrolling: false, 
+            smoothScrolling: true, 
             contextmenu: true,
             cursorBlinking: "phase", 
-            cursorSmoothCaretAnimation: "off", 
+            cursorSmoothCaretAnimation: true, 
             formatOnPaste: false,
             lineNumbers: editorSettings.lineNumbers ? "on" : "off",
             padding: { top: 8, bottom: 8 },
-            quickSuggestions: false,
-            suggestOnTriggerCharacters: false, 
-            folding: false,
-            parameterHints: { enabled: false },
+            quickSuggestions: true,
+            suggestOnTriggerCharacters: true,
+            parameterHints: { enabled: true },
             tabSize: editorSettings.tabSize,
             wordWrap: editorSettings.wordWrap ? "on" : "off",
-            renderLineHighlight: 'none',
-            renderWhitespace: 'none',
-            disableLayerHinting: true,
+            folding: false,
+            snippetSuggestions: 'inline',
+            suggest: {
+              showMethods: true,
+              showFunctions: true,
+              showClasses: true, 
+              showVariables: true,
+              showWords: true,
+              showProperties: true
+            }
           }}
+          className="font-mono select-text cursor-text"
         />
       </div>
-      <div className="control-panel">
-        <div className="flex-start">
-          <button className="btn-control" onClick={() => setCode("")}>
+      <div className="h-[52px] min-h-[52px] max-h-[52px] flex px-4 justify-between items-center bg-[#121212] relative z-[15] w-full flex-shrink-0 box-border overflow-visible border-t border-[#333333]">
+        <div className="flex items-center">
+          <button 
+            className="text-[--foreground] hover:text-white bg-transparent border-none px-2 py-2 cursor-pointer font-medium transition-opacity opacity-80 text-[15px] whitespace-nowrap hover:opacity-100 active:translate-y-[1px]"
+            onClick={() => setCode("")}
+            style={{ backgroundColor: 'transparent !important' }}
+          >
             Clear
           </button>
-          <div className="control-divider"></div>
+          <div className="w-[1px] h-[18px] bg-[--border] mx-[10px]"></div>
           <button 
-            className="btn-control" 
+            className={`text-[--foreground] hover:text-white bg-transparent border-none px-2 py-2 cursor-pointer font-medium transition-opacity opacity-80 text-[15px] whitespace-nowrap hover:opacity-100 active:translate-y-[1px] ${isCodeEmpty ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
             onClick={() => navigator.clipboard.writeText(code)}
             disabled={isCodeEmpty}
+            style={{ backgroundColor: 'transparent !important' }}
           >
             Copy
           </button>
         </div>
         <div className="flex-grow"></div>
         <button 
-          className={`btn-control ${isExecuting ? 'executing' : ''} ${isCodeEmpty ? 'btn-disabled' : ''}`}
+          className={`text-[--foreground] hover:text-white bg-transparent border-none px-2 py-2 cursor-pointer font-medium transition-opacity opacity-80 text-[15px] whitespace-nowrap hover:opacity-100 active:translate-y-[1px] flex items-center ${isCodeEmpty ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''} ${isExecuting ? 'bg-transparent' : ''}`}
           onClick={handleExecute}
           disabled={isExecuting || isCodeEmpty}
           title={isCodeEmpty ? "Can't execute empty script" : "Execute script"}
+          style={{ backgroundColor: 'transparent !important' }}
         >
-          <span className="execute-icon">▶</span>
+          <span className="text-xs mr-1">▶</span>
           <span>Execute</span>
         </button>
       </div>
+
+      <CommandPalette 
+        isVisible={commandPaletteVisible}
+        setIsVisible={setCommandPaletteVisible}
+        editor={editorRef.current}
+        monaco={monacoRef.current}
+      />
+      
+      <style jsx global>{`
+        .monaco-editor .scrollbar .slider {
+          background: #555555 !important;
+          border-radius: 3px !important;
+        }
+        .monaco-editor .scrollbar.horizontal .slider {
+          height: 4px !important;
+        }
+        .monaco-scrollable-element > .scrollbar > .slider {
+          background: #555555 !important;
+          border-radius: 3px !important;
+        }
+        .monaco-scrollable-element > .scrollbar > .slider:hover {
+          background: #777777 !important;
+        }
+        .monaco-editor-background,
+        .monaco-editor .margin {
+          background-color: #121212 !important;
+        }
+        .monaco-editor, 
+        .monaco-editor * {
+          user-select: text !important;
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          cursor: text !important;
+          font-family: var(--font-mono) !important;
+        }
+        .monaco-editor, .monaco-editor * {
+          outline: none !important;
+          border-color: transparent !important;
+        }
+        .monaco-editor .view-lines,
+        .monaco-editor .view-line {
+          user-select: text !important;
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          cursor: text !important;
+        }
+        .h-\\[52px\\] button {
+          background-color: transparent !important;
+          border: none !important;
+        }
+        
+        .h-\\[52px\\] button:hover {
+          background-color: transparent !important;
+        }
+      `}</style>
     </div>
   );
 }

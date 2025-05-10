@@ -19,12 +19,14 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@monaco-editor/react": "^4.5.1",
+    "@tailwindcss/vite": "^4.1.6",
+    "discord-rpc": "^4.0.1",
     "electron-store": "^8.1.0",
     "node-fetch": "^2.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "uuid": "^9.0.0",
-    "discord-rpc": "^4.0.1"
+    "tailwindcss": "^4.1.6",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.28",

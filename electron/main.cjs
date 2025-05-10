@@ -188,6 +188,55 @@ function initializeNocturnal() {
       return { success: false, error: error.message };
     }
   });
+
+  ipcMain.handle('execute-tool', async (event, toolId) => {
+    try {
+      let scriptContent = '';
+      
+      switch (toolId) {
+        case 'dex':
+          scriptContent = `loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Scripts/main/Universal/BypassedDarkDexV3.lua", true))()`;
+          break;
+        case 'remotespy':
+          scriptContent = `loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua", true))()`;
+          break;
+        case 'simplespy':
+          scriptContent = `loadstring(game:HttpGet("https://github.com/exxtremestuffs/SimpleSpySource/raw/master/SimpleSpy.lua"))()`;
+          break;
+        case 'infinityyield':
+          scriptContent = `loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()`;
+          break;
+        case 'darkdex':
+          scriptContent = `loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Scripts/main/Universal/BypassedDarkDexV3.lua"))()`;
+          break;
+        case 'hydroxide':
+          scriptContent = `local owner = "Upbolt"
+  local branch = "revision"
+  
+  local function webImport(file)
+      return loadstring(game:HttpGetAsync(("https://raw.githubusercontent.com/%s/Hydroxide/%s/%s.lua"):format(owner, branch, file)), file .. '.lua')()
+  end
+  
+  webImport("init")
+  webImport("ui/main")`;
+          break;
+        case 'securedex':
+          scriptContent = `loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Scripts/main/Universal/Dex%20Explorer.lua"))()`;
+          break;
+        case 'sirius':
+          scriptContent = ``;
+          break;
+        default:
+          return { success: false, message: "Unknown tool: " + toolId };
+      }
+      
+      const result = await executeScript(scriptContent);
+      return { success: true, message: `uhh i should remove this` };
+    } catch (error) {
+      console.error(error);
+      return { success: false, message: error.message };
+    }
+  });
 }
 
 function ensureNocturnalDir() {

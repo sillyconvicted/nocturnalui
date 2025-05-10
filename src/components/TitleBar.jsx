@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-export default function TitleBar({ isSaving }) {
+export default function TitleBar({ isSaving, onSaveManually }) {
   const [electronAvailable, setElectronAvailable] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState({ 
     connected: false, 
@@ -153,7 +153,7 @@ export default function TitleBar({ isSaving }) {
     <div className="title-bar">
       <div className="app-title-container">
         {electronAvailable && macosButtons && (
-          <div className="window-controls macos-style">
+          <div className="flex webkit-app-region-no-drag gap-4 mr-[15px] relative z-100">
             <button className="window-control macos close" onClick={handleClose} title="Close">
               <svg width="12" height="12" viewBox="0 0 12 12">
                 <path d="M6 5l4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4 1-1 4 4z" fill="currentColor" />
@@ -190,14 +190,17 @@ export default function TitleBar({ isSaving }) {
         )}
       </div>
 
+      <div className="flex-grow"></div>
+      
+
       {electronAvailable && !macosButtons && (
-        <div className="window-controls windows-style">
-          <button className="window-control" onClick={handleMinimize} title="Minimize">
+        <div className="flex webkit-app-region-no-drag gap-4 ml-3">
+          <button className="window-control px-1" onClick={handleMinimize} title="Minimize">
             <svg width="10" height="10" viewBox="0 0 10 1">
               <path d="M0 0h10v1H0z" fill="currentColor" />
             </svg>
           </button>
-          <button className="window-control" onClick={handleMaximize} title={isMaximized ? "Restore" : "Maximize"}>
+          <button className="window-control px-1" onClick={handleMaximize} title={isMaximized ? "Restore" : "Maximize"}>
             {isMaximized ? (
               <svg width="10" height="10" viewBox="0 0 10 10">
                 <path d="M2 0v2H0v8h8V8h2V0H2zm5 9H1V3h6v6z" fill="currentColor" />
@@ -208,13 +211,21 @@ export default function TitleBar({ isSaving }) {
               </svg>
             )}
           </button>
-          <button className="window-control close" onClick={handleClose} title="Close">
+          <button className="window-control close px-1" onClick={handleClose} title="Close">
             <svg width="10" height="10" viewBox="0 0 10 10">
               <path d="M1 1l8 8m0-8l-8 8" stroke="currentColor" strokeWidth="1.5" />
             </svg>
           </button>
         </div>
       )}
+      <style jsx>{`
+        .webkit-app-region-drag {
+          -webkit-app-region: drag;
+        }
+        .webkit-app-region-no-drag {
+          -webkit-app-region: no-drag;
+        }
+      `}</style>
     </div>
   );
 }

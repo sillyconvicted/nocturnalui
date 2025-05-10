@@ -9,6 +9,7 @@ import TitleBar from "./components/TitleBar";
 import ConsolePage from "./components/ConsolePage";
 import EditorPreload from "./components/EditorPreload";
 import ScriptHub from "./components/ScriptHub";
+import CommandPalette from "./components/CommandPalette";
 
 const DEFAULT_TAB = { id: 'default', name: 'Script 1', code: 'print("Hello, Hydrogen!")' };
 
@@ -21,6 +22,7 @@ export default function Home() {
   const [isElectron, setIsElectron] = useState(false);
   const [isInBackground, setIsInBackground] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [commandPaletteVisible, setCommandPaletteVisible] = useState(false);
   
   const [isTabSwitching, setIsTabSwitching] = useState(false);
   const tabSwitchTimeoutRef = useRef(null);
@@ -224,10 +226,9 @@ export default function Home() {
   };
 
   const executeCode = async () => {
-    if (!currentCode || currentCode.trim() === '') {
-      alert('I cant execute an empty script.');
-      return;
-    }
+    if (!currentCode || currentCode.trim() === '')
+      alert('I cant execute an empty script.')
+      return
 
     if (typeof window.electron !== 'undefined') {
       try {
@@ -299,10 +300,9 @@ export default function Home() {
   };
 
   const handleScriptSelect = (scriptName, scriptCode) => {
-    if (!scriptCode || scriptCode.trim() === '') {
-      alert('Cannot add an empty script');
-      return;
-    }
+    if (!scriptCode || scriptCode.trim() === '')
+      alert('Cannot add an empty script')
+      return
     
     const newId = uuidv4();
     
@@ -324,7 +324,7 @@ export default function Home() {
 
   const sidebarItems = [
     { id: 'home', name: 'Home', icon: '' },
-    { id: 'main', name: 'Main', icon: '' },
+    { id: 'main', name: 'Editor', icon: '' },
     { id: 'console', name: 'Logs', icon: '' },
     { id: 'scripthub', name: 'Script Library', icon: '' },
     { id: 'settings', name: 'Settings', icon: '' },
@@ -374,6 +374,128 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p' || e.key === 'F1') {
+        e.preventDefault();
+        setCommandPaletteVisible(true);
+      }
+      
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    
+    const handleNavigation = (event) => {
+      const { target } = event.detail;
+      if (target && sidebarItems.some(item => item.id === target)) {
+        setActiveSidebarItem(target);
+      }
+    };
+    
+    const handleNewTab = () => {
+      if (activeSidebarItem === 'main') {
+        addNewTab();
+      } else {
+        setActiveSidebarItem('main');
+        setTimeout(() => addNewTab(), 100);
+      }
+    };
+    
+    const handleSaveScript = () => {
+      if (activeSidebarItem === 'main' && activeTabId) {
+        const activeTab = scriptTabs.find(tab => tab.id === activeTabId);
+        if (activeTab) {
+          const scriptToSave = {
+            id: uuidv4(),
+            title: activeTab.name,
+            code: currentCode,
+            dateSaved: new Date().toISOString()
+          };
+          
+          saveScriptToLibrary(scriptToSave);
+        }
+      }
+    };
+
+    const handleTabSwitch = (event) => {
+      const { direction } = event.detail;
+      
+      if (activeSidebarItem !== 'main' || scriptTabs.length <= 1) return;
+      
+      const currentTabIndex = scriptTabs.findIndex(tab => tab.id === activeTabId);
+      if (currentTabIndex === -1) return;
+      
+      let nextTabIndex;
+      if (direction === 'next') {
+        nextTabIndex = (currentTabIndex + 1) % scriptTabs.length;
+      } else if (direction === 'previous') {
+        nextTabIndex = (currentTabIndex - 1 + scriptTabs.length) % scriptTabs.length;
+      } else {
+        nextTabIndex = (currentTabIndex + 1) % scriptTabs.length;
+      }
+
+      setActiveTabId(scriptTabs[nextTabIndex].id);
+    };
+    
+    const switchToTab = (tabId) => {
+      handleTabSwitch(tabId);
+    };
+
+    const handleSwitchToTabNumber = (event) => {
+      const { tabNumber } = event.detail;
+      
+      if (activeSidebarItem !== 'main') {
+        setActiveSidebarItem('main');
+        setTimeout(() => {
+          if (scriptTabs.length >= tabNumber) {
+            setActiveTabId(scriptTabs[tabNumber - 1].id);
+          }
+        }, 100);
+        return;
+      }
+      
+      if (scriptTabs.length >= tabNumber) {
+        const index = tabNumber - 1;
+        setActiveTabId(scriptTabs[index].id);
+      }
+    };
+    
+    window.addEventListener('switch-tab', handleTabSwitch);
+    
+    window.addEventListener('navigate', handleNavigation);
+    window.addEventListener('new-tab', handleNewTab);
+    window.addEventListener('save-script', handleSaveScript);
+    window.addEventListener('switch-to-tab-number', handleSwitchToTabNumber);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('navigate', handleNavigation);
+      window.removeEventListener('new-tab', handleNewTab);
+      window.removeEventListener('save-script', handleSaveScript);
+      window.removeEventListener('switch-tab', handleTabSwitch);
+      window.removeEventListener('switch-to-tab-number', handleSwitchToTabNumber);
+    };
+  }, [activeSidebarItem, activeTabId, scriptTabs, currentCode]);
+
+  const saveScriptToLibrary = async (script) => {
+    if (typeof window.electron !== 'undefined') {
+      try {
+        const result = await window.electron.invoke('load-local-scripts');
+        if (result.success) {
+          const localLibrary = result.scripts || [];
+          localLibrary.push(script);
+          await window.electron.invoke('save-local-scripts', localLibrary);
+          window.electron.invoke('show-notification', {
+            title: 'lorem',
+            body: `lorem ipsum`
+          }).catch(console.error);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
+
   return (
     <div className="app-container">
       <EditorPreload />
@@ -388,6 +510,13 @@ export default function Home() {
       <main className="main-content">
         {renderMainContent()}
       </main>
+
+      <CommandPalette 
+        isVisible={commandPaletteVisible}
+        setIsVisible={setCommandPaletteVisible}
+        editor={window.editor} 
+        monaco={window.monaco}
+      />
     </div>
   );
 }
