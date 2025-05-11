@@ -14,7 +14,7 @@ export default function EditorWrapper({ code, setCode, onExecute, tabName, tabId
       timeoutId = setTimeout(() => {
         setLocalTabId(tabId);
         setLastStableTabId(tabId);
-      }, 50);
+      }, 20);
     }
     
     return () => {
@@ -57,7 +57,7 @@ export default function EditorWrapper({ code, setCode, onExecute, tabName, tabId
   };
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-[#121212]">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-[#121212] transform-gpu">
       <MonacoEditor 
         code={code} 
         setCode={setCode} 

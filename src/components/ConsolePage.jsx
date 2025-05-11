@@ -13,7 +13,7 @@ export default function ConsolePage() {
   const scrollPositionRef = useRef(null);
   const isElectron = typeof window !== 'undefined' && window.electron !== undefined;
 
-  const fetchLogs = async (preserveScroll = false) => {
+  const fetchLogs = async (preserveScroll = false, forceFullLoad = false) => {
     if (!isElectron) {
       setError("get out!");
       setLoading(false);
@@ -21,7 +21,6 @@ export default function ConsolePage() {
     }
 
     try {
-
       if (preserveScroll && logContainerRef.current) {
         scrollPositionRef.current = {
           top: logContainerRef.current.scrollTop,
@@ -29,6 +28,29 @@ export default function ConsolePage() {
         };
       }
       
+      const preloadedLogsJson = sessionStorage.getItem('preloadedConsoleLogs');
+      if (preloadedLogsJson && !forceFullLoad) {
+        const preloadedData = JSON.parse(preloadedLogsJson);
+        
+        if (Date.now() - preloadedData.timestamp < 10000) {
+          setLogEntries(preloadedData.entries || []);
+          setLastRefreshTime(new Date(preloadedData.timestamp));
+          setFilteredCount(preloadedData.filteredCount || 0);
+          setLoading(false);
+          
+          if (preloadedData.isPreview) {
+            setTimeout(() => {
+              refreshFullLogs();
+            }, 1000);
+          }
+
+          if (!preloadedData.isPreview) {
+            sessionStorage.removeItem('preloadedConsoleLogs');
+          }
+          return;
+        }
+      }
+
       setLoading(true);
       const result = await window.electron.invoke('read-roblox-logs');
       
@@ -46,6 +68,29 @@ export default function ConsolePage() {
       setError(err.message || "An error occurred!");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshFullLogs = async () => {
+    try {
+      const result = await window.electron.invoke('read-roblox-logs');
+      if (result.success) {
+        sessionStorage.setItem('preloadedConsoleLogs', JSON.stringify({
+          entries: result.entries || [],
+          filteredCount: result.filteredCount || 0,
+          totalCount: result.totalCount,
+          timestamp: Date.now(),
+          isPreview: false  
+        }));
+        
+        if (window.location.pathname.includes('console')) {
+          setLogEntries(result.entries || []);
+          setLastRefreshTime(new Date());
+          setFilteredCount(result.filteredCount || 0);
+        }
+      }
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -150,7 +195,7 @@ export default function ConsolePage() {
       )}
       
       {loading && displayedEntries.length === 0 ? (
-        <div className="log-viewer-loading">Loading logs...</div>
+        <div className="log-viewer-loading"></div>
       ) : error ? (
         <div className="log-viewer-error">{error}</div>
       ) : displayedEntries.length === 0 ? (

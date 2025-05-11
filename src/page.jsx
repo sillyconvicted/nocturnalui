@@ -55,6 +55,21 @@ export default function Home() {
     async function loadSavedTabs() {
       if (isElectron) {
         try {
+          const preloadedTabsJson = sessionStorage.getItem('preloadedTabs');
+          if (preloadedTabsJson) {
+            const preloadedData = JSON.parse(preloadedTabsJson);
+            setScriptTabs(preloadedData.tabs);
+            
+            if (preloadedData.activeTabId && preloadedData.tabs.some(tab => tab.id === preloadedData.activeTabId)) {
+              setActiveTabId(preloadedData.activeTabId);
+            } else {
+              setActiveTabId(preloadedData.tabs[0].id);
+            }
+            
+            sessionStorage.removeItem('preloadedTabs');
+            return;
+          }
+          
           const result = await window.electron.invoke('load-tabs');
           if (result.success && result.data) {
             setScriptTabs(result.data.tabs);
@@ -181,16 +196,6 @@ export default function Home() {
     
     setIsTabSwitching(true);
     
-    const blocker = document.createElement('div');
-    blocker.style.position = 'fixed';
-    blocker.style.top = '0';
-    blocker.style.left = '0';
-    blocker.style.right = '0';
-    blocker.style.bottom = '0';
-    blocker.style.zIndex = '9999';
-    blocker.style.backgroundColor = 'transparent';
-    document.body.appendChild(blocker);
-    
     requestAnimationFrame(() => {
       if (lastEditedTabRef.current === activeTabId) {
         setScriptTabs(tabs => 
@@ -207,11 +212,10 @@ export default function Home() {
       if (newTab) {
         setCurrentCode(newTab.code || '');
       }
-      
+
       setTimeout(() => {
-        document.body.removeChild(blocker);
         setIsTabSwitching(false);
-      }, 150);
+      }, 100);
     });
   };
 

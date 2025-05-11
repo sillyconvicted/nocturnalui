@@ -27,6 +27,7 @@ export default function ScriptHub({ onSelectScript }) {
   const [activeLibrary, setActiveLibrary] = useState(globalSearchState.activeLibrary);
   const [localLibrary, setLocalLibrary] = useState(globalSearchState.localLibrary);
   const [localSearchResults, setLocalSearchResults] = useState([]);
+  const [localLoading, setLocalLoading] = useState(false);
   
   useEffect(() => {
     globalSearchState.term = searchTerm;
@@ -41,7 +42,21 @@ export default function ScriptHub({ onSelectScript }) {
   useEffect(() => {
     const loadLocalLibrary = async () => {
       if (typeof window.electron !== 'undefined') {
+        setLocalLoading(true);
+        
         try {
+
+          const preloadedScriptsJson = sessionStorage.getItem('preloadedLocalScripts');
+          if (preloadedScriptsJson) {
+            const preloadedScripts = JSON.parse(preloadedScriptsJson);
+            setLocalLibrary(preloadedScripts);
+            setLocalSearchResults(preloadedScripts);
+            setLocalLoading(false);
+            
+            sessionStorage.removeItem('preloadedLocalScripts');
+            return;
+          }
+      
           const result = await window.electron.invoke('load-local-scripts');
           if (result.success) {
             setLocalLibrary(result.scripts || []);
@@ -50,6 +65,8 @@ export default function ScriptHub({ onSelectScript }) {
         } catch (error) {
           console.error(error);
           setLocalLibrary([]);
+        } finally {
+          setLocalLoading(false);
         }
       } else {
         try {
@@ -81,12 +98,75 @@ export default function ScriptHub({ onSelectScript }) {
       }
     }
   }, [searchTerm, localLibrary, activeLibrary]);
-  
+
+  useEffect(() => {
+    const needsRScriptsPreload = sessionStorage.getItem('needsRScriptsPreload') === 'true';
+    
+    if (needsRScriptsPreload && typeof window.electron !== 'undefined') {
+      const preloadRScripts = async () => {
+        try {
+          const controller = new AbortController();
+          const signal = controller.signal;
+          
+          const apiUrl = 'https://rscripts.net/api/v2/scripts?page=1&orderBy=popular&sort=desc';
+          const response = await fetch(apiUrl, { signal });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data && data.scripts) {
+              setSearchResults(data.scripts);
+              globalSearchState.results = data.scripts;
+              
+              sessionStorage.setItem('preloadedRScripts', JSON.stringify({
+                scripts: data.scripts,
+                info: data.info || {},
+                timestamp: Date.now()
+              }));
+
+              sessionStorage.removeItem('needsRScriptsPreload');
+            }
+          }
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.warn(err);
+          }
+        }
+      };
+
+      const timeoutId = setTimeout(preloadRScripts, 2000);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, []);
+
   const fetchScriptsFromRScripts = async (query, page = 1) => {
     setLoading(true);
     setError(null);
+    
     try {
-      const apiUrl = `https://rscripts.net/api/v2/scripts?page=${page}&orderBy=date&sort=desc${query ? `&q=${encodeURIComponent(query)}` : ''}`;
+      if (page === 1 && !query) {
+        const preloadedData = sessionStorage.getItem('preloadedRScripts');
+        
+        if (preloadedData) {
+          const data = JSON.parse(preloadedData);
+
+          if (Date.now() - data.timestamp < 600000) {
+            setSearchResults(data.scripts);
+            if (data.info) {
+              setCurrentPage(data.info.currentPage || 1);
+              setMaxPages(data.info.maxPages || 1);
+            }
+            setHasSearched(true);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      const apiUrl = `https://rscripts.net/api/v2/scripts?page=${page}&orderBy=${query ? 'date' : 'popular'}&sort=desc${query ? `&q=${encodeURIComponent(query)}` : ''}`;
       
       const response = await fetch(apiUrl);
       if (!response.ok) {

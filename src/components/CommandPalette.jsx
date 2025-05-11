@@ -438,7 +438,7 @@ export default function CommandPalette({ isVisible, setIsVisible, editor, monaco
         }
       }}
     >
-      <div className="w-[550px] max-w-[90vw] bg-[#121212] rounded-xl overflow-hidden flex flex-col shadow-2xl border border-[#3a3a3a]">
+      <div className="w-[550px] max-w-[90vw] bg-[#121212] rounded-xl overflow-hidden flex flex-col shadow-2xl border border-[#333333]">
         <div className="p-3">
           <div className="relative flex items-center">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666666]">

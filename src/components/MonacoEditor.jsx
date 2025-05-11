@@ -209,6 +209,8 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
     };
   }, []);
 
+  let handleThemeChangeRef = null;
+
   function handleEditorDidMount(editor, monaco) {
     editorRef.current = editor;
     monacoRef.current = monaco;
@@ -238,6 +240,29 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
     
     previousTabIdRef.current = tabId;
     window.dispatchEvent(new CustomEvent('monaco-ready'));
+    window.monaco = monaco; 
+    handleThemeChangeRef = (event) => {
+      if (event.detail && event.detail.settings) {
+        const isPink = event.detail.settings.pinkTheme;
+        monaco.editor.defineTheme('vs-dark', {
+          base: 'vs-dark',
+          inherit: true,
+          rules: [],
+          colors: {
+            'editor.background': isPink ? '#1a0e25' : '#121212',
+            'editor.foreground': '#ffffff',
+            'editorLineNumber.foreground': isPink ? '#ff68ce' : '#858585',
+            'editorLineNumber.activeForeground': isPink ? '#ff8cda' : '#c6c6c6',
+            'editorCursor.foreground': isPink ? '#ff46c5' : '#ffffff',
+            'editor.selectionBackground': isPink ? '#481b63' : '#264f78',
+            'editor.lineHighlightBackground': isPink ? 'rgba(255, 70, 197, 0.15)' : 'rgba(33, 33, 33, 0.4)',
+            'editor.inactiveSelectionBackground': '#3a3d41'
+          }
+        });
+        monaco.editor.setTheme('vs-dark');
+      }
+    };
+    window.addEventListener('settings-changed', handleThemeChangeRef);
 
     if (!autoSaveEnabled && monaco) {
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {});
@@ -315,12 +340,15 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
     }
   };
 
-  // Clean up event listeners
+
   useEffect(() => {
     return () => {
       window.removeEventListener('execute-script', handleExecute);
       window.removeEventListener('clear-editor', () => {});
       window.removeEventListener('execute-tool', handleToolExecution);
+      if (handleThemeChangeRef) {
+        window.removeEventListener('settings-changed', handleThemeChangeRef);
+      }
     };
   }, []);
 
@@ -345,7 +373,7 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
       requestAnimationFrame(() => {
         const container = document.querySelector('.monaco-editor-container');
         if (container) {
-          container.style.visibility = 'hidden';
+          container.classList.add('monaco-editor-hidden');
           
           if (editorRef.current) {
             editorRef.current.updateOptions({ readOnly: true });
@@ -356,17 +384,17 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
       setTimeout(() => {
         const container = document.querySelector('.monaco-editor-container');
         if (container) {
+          container.classList.remove('monaco-editor-hidden');
+          
           setTimeout(() => {
-            container.style.visibility = 'visible';
-
             if (editorRef.current) {
               editorRef.current.updateOptions({ readOnly: false });
             }
             
             isUpdatingRef.current = false;
-          }, 20);
+          }, 50);
         }
-      }, 10);
+      }, 20);
     }
   }, [isTabSwitching]);
 
@@ -503,71 +531,70 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
       <div className="flex-1 relative min-h-[100px] h-[calc(100%-52px)] overflow-hidden bg-[#121212] border-0">
-        {(isEditorLoading || isTabSwitching) && (
-          <div className="absolute inset-0 z-10 bg-[#121212] flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-t-transparent border-[#333333] rounded-full animate-spin"></div>
-          </div>
-        )}
-        
-        <Editor
-          height="100%"
-          defaultLanguage="lua"
-          value={code}
-          onChange={(newValue) => {
-            if (isTabSwitching) return;
-            setCode(newValue);
-          }}
-          onMount={handleEditorDidMount}
-          loading={<div className="w-full h-full bg-[#121212]" />}
-          theme="vs-dark"
-          beforeMount={(monaco) => {
-            setIsEditorLoading(true);
-            
-            monaco.editor.defineTheme('vs-dark', {
-              base: 'vs-dark',
-              inherit: true,
-              rules: [],
-              colors: {
-                'editor.background': '#121212',
-                'editor.foreground': '#ffffff',
-                'editorLineNumber.foreground': '#858585',
-                'editorLineNumber.activeForeground': '#c6c6c6',
-                'editorCursor.foreground': '#ffffff',
-                'editor.selectionBackground': '#264f78',
-                'editor.inactiveSelectionBackground': '#3a3d41'
+        <div className="monaco-wrapper">
+          <Editor
+            height="100%"
+            defaultLanguage="lua"
+            value={code}
+            onChange={(newValue) => {
+              if (isTabSwitching) return;
+              setCode(newValue);
+            }}
+            onMount={handleEditorDidMount}
+            loading={<div className="w-full h-full bg-[#121212]" />}
+            theme="vs-dark"
+            beforeMount={(monaco) => {
+              setIsEditorLoading(true);
+              
+              const isPinkTheme = document.body.classList.contains('pink-theme');
+              
+              monaco.editor.defineTheme('vs-dark', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [],
+                colors: {
+                  'editor.background': isPinkTheme ? '#1a0e25' : '#121212',
+                  'editor.foreground': '#ffffff',
+                  'editorLineNumber.foreground': isPinkTheme ? '#ff68ce' : '#858585',
+                  'editorLineNumber.activeForeground': isPinkTheme ? '#ff8cda' : '#c6c6c6',
+                  'editorCursor.foreground': isPinkTheme ? '#ff46c5' : '#ffffff',
+                  'editor.selectionBackground': isPinkTheme ? '#481b63' : '#264f78',
+                  'editor.lineHighlightBackground': isPinkTheme ? 'rgba(255, 70, 197, 0.15)' : 'rgba(33, 33, 33, 0.4)',
+                  'editor.inactiveSelectionBackground': '#3a3d41'
+                }
+              });
+            }}
+            options={{
+              fontSize: editorSettings.fontSize,
+              minimap: { enabled: editorSettings.minimap },
+              scrollBeyondLastLine: false,
+              fontFamily: "JetBrains Mono, monospace",
+              smoothScrolling: true, 
+              contextmenu: true,
+              cursorBlinking: "phase", 
+              cursorSmoothCaretAnimation: true, 
+              formatOnPaste: false,
+              lineNumbers: editorSettings.lineNumbers ? "on" : "off",
+              padding: { top: 8, bottom: 8 },
+              quickSuggestions: true,
+              suggestOnTriggerCharacters: true,
+              parameterHints: { enabled: true },
+              tabSize: editorSettings.tabSize,
+              wordWrap: editorSettings.wordWrap ? "on" : "off",
+              folding: false,
+              snippetSuggestions: 'inline',
+              suggest: {
+                showMethods: true,
+                showFunctions: true,
+                showClasses: true, 
+                showVariables: true,
+                showWords: true,
+                showProperties: true
               }
-            });
-          }}
-          options={{
-            fontSize: editorSettings.fontSize,
-            minimap: { enabled: editorSettings.minimap },
-            scrollBeyondLastLine: false,
-            fontFamily: "JetBrains Mono, monospace",
-            smoothScrolling: true, 
-            contextmenu: true,
-            cursorBlinking: "phase", 
-            cursorSmoothCaretAnimation: true, 
-            formatOnPaste: false,
-            lineNumbers: editorSettings.lineNumbers ? "on" : "off",
-            padding: { top: 8, bottom: 8 },
-            quickSuggestions: true,
-            suggestOnTriggerCharacters: true,
-            parameterHints: { enabled: true },
-            tabSize: editorSettings.tabSize,
-            wordWrap: editorSettings.wordWrap ? "on" : "off",
-            folding: false,
-            snippetSuggestions: 'inline',
-            suggest: {
-              showMethods: true,
-              showFunctions: true,
-              showClasses: true, 
-              showVariables: true,
-              showWords: true,
-              showProperties: true
-            }
-          }}
-          className="font-mono select-text cursor-text"
-        />
+            }}
+            className="font-mono select-text cursor-text"
+          />
+        </div>
       </div>
       <div className="h-[52px] min-h-[52px] max-h-[52px] flex px-4 justify-between items-center bg-[#121212] relative z-[15] w-full flex-shrink-0 box-border overflow-visible border-t border-[#333333]">
         <div className="flex items-center">
@@ -608,7 +635,7 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
         monaco={monacoRef.current}
       />
       
-      <style jsx global>{`
+      <style jsx data-global="true">{`
         .monaco-editor .scrollbar .slider {
           background: #555555 !important;
           border-radius: 3px !important;
@@ -655,6 +682,77 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
         
         .h-\\[52px\\] button:hover {
           background-color: transparent !important;
+        }
+        .monaco-editor-container {
+          transition: opacity 0.2s ease-out;
+        }
+        .monaco-editor-hidden {
+          opacity: 0.9;
+        }
+        .editor-loading {
+          transition: opacity 0.2s ease;
+        }
+        .monaco-editor .loading-indicator {
+          display: none !important;
+        }
+        .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon {
+          display: none !important;
+          visibility: hidden !important;
+          width: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .monaco-editor .suggest-widget .monaco-list .monaco-list-row .monaco-icon-label {
+          padding-left: 4px !important; 
+        }
+        .monaco-editor .suggest-widget .monaco-list .monaco-list-row .monaco-icon-name-container {
+          padding-left: 0 !important;
+        }
+        .monaco-editor-container {
+          transition: opacity 0.2s ease-out;
+          will-change: opacity;
+          backface-visibility: hidden;
+          transform: translateZ(0);
+        }
+        .monaco-editor-hidden {
+          opacity: 0.95; 
+        }
+        .monaco-editor, 
+        .monaco-editor-background,
+        .monaco-editor .overflow-guard {
+          backface-visibility: hidden !important;
+          transform: translateZ(0) !important;
+        }
+        .editor-loading {
+          transition: opacity 0.25s ease-out;
+        }
+        .monaco-wrapper {
+          position: relative;
+          height: 100%;
+          width: 100%;
+          overflow: hidden;
+          background-color: #121212;
+        }
+        body.pink-theme .monaco-editor-background,
+        body.pink-theme .monaco-editor .margin {
+          background-color: #1a0e25 !important;
+        }
+        body.pink-theme .monaco-editor .current-line {
+          background-color: rgba(255, 70, 197, 0.1) !important;
+          border-color: rgba(255, 70, 197, 0.1) !important;
+        }
+        body.pink-theme .monaco-editor .line-numbers {
+          color: rgba(255, 70, 197, 0.6) !important;
+        }
+        body.pink-theme .monaco-editor .cursor {
+          background-color: #ff46c5 !important;
+          border-color: #ff46c5 !important;
+        }
+        body.pink-theme .monaco-editor .selected-text {
+          background-color: rgba(255, 70, 197, 0.2) !important;
+        }
+        body.pink-theme .monaco-editor-container {
+          box-shadow: inset 0 0 30px rgba(255, 70, 197, 0.03);
         }
       `}</style>
     </div>

@@ -13,7 +13,8 @@ export default function SettingsPage({ onSaveTabsManually }) {
     lineNumbers: true,
     macosButtons: false, 
     hydrogenPortScanStart: 6969,
-    hydrogenPortScanEnd: 7069
+    hydrogenPortScanEnd: 7069,
+    pinkTheme: false
   });
   
   const [isElectron, setIsElectron] = useState(false);
@@ -160,183 +161,234 @@ export default function SettingsPage({ onSaveTabsManually }) {
   };
 
   return (
-    <div className="settings-page">
-      <div className="settings-container">
-        <div className="settings-header">
-          <h1 className="settings-title">Settings</h1>
+    <div className="flex-1 bg-[#0e0e0e] overflow-y-auto py-6">
+      <div className="max-w-3xl w-full mx-auto px-6">
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-2xl font-semibold font-display">Settings</h1>
+          {renderSaveStatus()}
         </div>
-        <p className="settings-subtitle">Customize Nocturnal UI to match your workflow</p>
+        <p className="text-sm text-gray-400 mb-8">Customize Nocturnal UI to match your workflow</p>
         
-        <div className="settings-section">
-          <h2 className="settings-section-title">Editor Preferences</h2>
+        <div className="mb-8">
+          <h2 className="text-lg font-medium mb-4 pb-2 border-b border-white/20">Editor Preferences</h2>
           
-          <div className="settings-row">
-            <label className="settings-label">Font Size</label>
-            <div className="settings-control">
-              <input 
-                type="number" 
-                className="settings-input" 
-                value={settings.fontSize} 
-                onChange={(e) => handleNumberChange('fontSize', e.target.value)}
-                min={8}
-                max={32}
-              />
-              <span className="settings-unit">px</span>
+          <div className="space-y-5">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium">Font Size</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="number" 
+                  className="w-20 text-right bg-[#131313] border border-gray-800 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-gray-600"
+                  value={settings.fontSize} 
+                  onChange={(e) => handleNumberChange('fontSize', e.target.value)}
+                  min={8}
+                  max={32}
+                />
+                <span className="text-xs text-gray-500">px</span>
+              </div>
             </div>
-          </div>
-          
-          <div className="settings-row">
-            <label className="settings-label">Tab Size</label>
-            <select 
-              className="settings-select"
-              value={settings.tabSize}
-              onChange={(e) => handleNumberChange('tabSize', e.target.value)}
-            >
-              <option value={2}>2 spaces</option>
-              <option value={4}>4 spaces</option>
-              <option value={8}>8 spaces</option>
-            </select>
-          </div>
-          
-          <div className="settings-row">
-            <label className="settings-label">Word Wrap</label>
-            <div className="settings-toggle">
-              <input 
-                type="checkbox" 
-                id="word-wrap" 
-                className="toggle-checkbox" 
-                checked={settings.wordWrap}
-                onChange={(e) => handleChange('wordWrap', e.target.checked)}
-              />
-              <label htmlFor="word-wrap" className="toggle-label"></label>
+            
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium">Tab Size</label>
+              <select 
+                className="w-32 bg-[#131313] border border-gray-800 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-gray-600 appearance-none"
+                value={settings.tabSize}
+                onChange={(e) => handleNumberChange('tabSize', e.target.value)}
+              >
+                <option value={2}>2 spaces</option>
+                <option value={4}>4 spaces</option>
+                <option value={8}>8 spaces</option>
+              </select>
             </div>
-          </div>
-          
-          <div className="settings-row">
-            <label className="settings-label">Show Minimap</label>
-            <div className="settings-toggle">
-              <input 
-                type="checkbox" 
-                id="minimap" 
-                className="toggle-checkbox" 
-                checked={settings.minimap}
-                onChange={(e) => handleChange('minimap', e.target.checked)}
-              />
-              <label htmlFor="minimap" className="toggle-label"></label>
+            
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium">Word Wrap</label>
+              <div className="relative w-5 h-5">
+                <input 
+                  type="checkbox" 
+                  id="word-wrap" 
+                  className="sr-only"
+                  checked={settings.wordWrap}
+                  onChange={(e) => handleChange('wordWrap', e.target.checked)}
+                />
+                <label 
+                  htmlFor="word-wrap" 
+                  className={`absolute inset-0 rounded flex items-center justify-center border ${settings.wordWrap ? 'bg-[#252525] border-[#333333]' : 'bg-[#1a1a1a] border-[#222222]'} cursor-pointer`}
+                >
+                  {settings.wordWrap && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              </div>
             </div>
-          </div>
-          
-          <div className="settings-row">
-            <label className="settings-label">Show Line Numbers</label>
-            <div className="settings-toggle">
-              <input 
-                type="checkbox" 
-                id="line-numbers" 
-                className="toggle-checkbox" 
-                checked={settings.lineNumbers}
-                onChange={(e) => handleChange('lineNumbers', e.target.checked)}
-              />
-              <label htmlFor="line-numbers" className="toggle-label"></label>
+            
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium">Show Minimap</label>
+              <div className="relative w-5 h-5">
+                <input 
+                  type="checkbox" 
+                  id="minimap" 
+                  className="sr-only"
+                  checked={settings.minimap}
+                  onChange={(e) => handleChange('minimap', e.target.checked)}
+                />
+                <label 
+                  htmlFor="minimap" 
+                  className={`absolute inset-0 rounded flex items-center justify-center border ${settings.minimap ? 'bg-[#252525] border-[#333333]' : 'bg-[#1a1a1a] border-[#222222]'} cursor-pointer`}
+                >
+                  {settings.minimap && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium">Show Line Numbers</label>
+              <div className="relative w-5 h-5">
+                <input 
+                  type="checkbox" 
+                  id="line-numbers" 
+                  className="sr-only"
+                  checked={settings.lineNumbers}
+                  onChange={(e) => handleChange('lineNumbers', e.target.checked)}
+                />
+                <label 
+                  htmlFor="line-numbers" 
+                  className={`absolute inset-0 rounded flex items-center justify-center border ${settings.lineNumbers ? 'bg-[#252525] border-[#333333]' : 'bg-[#1a1a1a] border-[#222222]'} cursor-pointer`}
+                >
+                  {settings.lineNumbers && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              </div>
             </div>
           </div>
         </div>
         
-        <div className="settings-section">
-          <h2 className="settings-section-title">Application Settings</h2>
+        <div className="mb-8">
+          <h2 className="text-lg font-medium mb-4 pb-2 border-b border-white/20">Application Settings</h2>
           
-          <div className="settings-row">
-            <div className="settings-label-group">
-              <label className="settings-label">Auto Save Scripts</label>
-              <p className="settings-description-inline">
-                {settings.autoSave ? "Changes are saved automatically" : "Use Cmd+S (or Ctrl+S) to save changes"}
-              </p>
+          <div className="space-y-5">
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="text-sm font-medium">Auto Save Scripts</label>
+                <p className="text-xs text-gray-500 mt-1">
+                  {settings.autoSave ? "Changes are saved automatically" : "Use Cmd+S (or Ctrl+S) to save changes"}
+                </p>
+              </div>
+              <div className="relative w-5 h-5">
+                <input 
+                  type="checkbox" 
+                  id="auto-save" 
+                  className="sr-only"
+                  checked={settings.autoSave}
+                  onChange={(e) => handleChange('autoSave', e.target.checked)}
+                />
+                <label 
+                  htmlFor="auto-save" 
+                  className={`absolute inset-0 rounded flex items-center justify-center border ${settings.autoSave ? 'bg-[#252525] border-[#333333]' : 'bg-[#1a1a1a] border-[#222222]'} cursor-pointer`}
+                >
+                  {settings.autoSave && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              </div>
             </div>
-            <div className="settings-toggle">
-              <input 
-                type="checkbox" 
-                id="auto-save" 
-                className="toggle-checkbox" 
-                checked={settings.autoSave}
-                onChange={(e) => handleChange('autoSave', e.target.checked)}
-              />
-              <label htmlFor="auto-save" className="toggle-label"></label>
+            
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="text-sm font-medium">Hydrogen Port Range</label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Range of ports to scan for Hydrogen server
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="number" 
+                  className="w-20 text-center bg-[#131313] border border-gray-800 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-gray-600"
+                  value={settings.hydrogenPortScanStart} 
+                  onChange={(e) => handleNumberChange('hydrogenPortScanStart', e.target.value)}
+                  min={1000}
+                  max={65535}
+                />
+                <span className="text-xs text-gray-500">to</span>
+                <input 
+                  type="number" 
+                  className="w-20 text-center bg-[#131313] border border-gray-800 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-gray-600"
+                  value={settings.hydrogenPortScanEnd} 
+                  onChange={(e) => handleNumberChange('hydrogenPortScanEnd', e.target.value)}
+                  min={1000}
+                  max={65535}
+                />
+              </div>
             </div>
-          </div>
-          
-          <div className="settings-row">
-            <div className="settings-label-group">
-              <label className="settings-label">Hydrogen Port Range</label>
-              <p className="settings-description-inline">
-                Range of ports to scan for Hydrogen server
-              </p>
-            </div>
-            <div className="port-range-inputs">
-              <input 
-                type="number" 
-                className="settings-input port-input" 
-                value={settings.hydrogenPortScanStart} 
-                onChange={(e) => handleNumberChange('hydrogenPortScanStart', e.target.value)}
-                min={1000}
-                max={65535}
-              />
-              <span className="port-range-separator">to</span>
-              <input 
-                type="number" 
-                className="settings-input port-input" 
-                value={settings.hydrogenPortScanEnd} 
-                onChange={(e) => handleNumberChange('hydrogenPortScanEnd', e.target.value)}
-                min={1000}
-                max={65535}
-              />
-            </div>
-          </div>
 
-          <div className="settings-row">
-            <div className="settings-label-group">
-              <label className="settings-label">macOS Window Controls</label>
-              <p className="settings-description-inline">
-                cant get this to work smh
-              </p>
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="text-sm font-medium">macOS Window Controls</label>
+                <p className="text-xs text-gray-500 mt-1">
+                  cant get this to work smh
+                </p>
+              </div>
+              <div className="relative w-5 h-5">
+                <input 
+                  type="checkbox" 
+                  id="macos-buttons" 
+                  className="sr-only"
+                  disabled={true}
+                  checked={settings.macosButtons}
+                  onChange={(e) => handleChange('macosButtons', e.target.checked)}
+                />
+                <label 
+                  htmlFor="macos-buttons" 
+                  className={`absolute inset-0 rounded flex items-center justify-center border opacity-50 ${settings.macosButtons ? 'bg-[#252525] border-[#333333]' : 'bg-[#1a1a1a] border-[#222222]'} cursor-not-allowed`}
+                >
+                  {settings.macosButtons && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              </div>
             </div>
-            <div className="settings-toggle">
-              <input 
-                type="checkbox" 
-                id="macos-buttons" 
-                className="toggle-checkbox"
-                disabled={true}
-                checked={settings.macosButtons}
-                onChange={(e) => handleChange('macosButtons', e.target.checked)}
-              />
-              <label htmlFor="macos-buttons" className="toggle-label"></label>
-            </div>
-          </div>
-        </div>
 
-        <div className="settings-section">
-          <h2 className="settings-section-title">Auto-Execute</h2>
-          
-          <div className="settings-row">
-            <div className="settings-label-group">
-              <label className="settings-label">Auto-Execute Folder</label>
-              <p className="settings-description-inline">
-                Scripts in this folder will run automatically when you join a game
-              </p>
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="text-sm font-medium">Beta Pink Theme</label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enables a pink-hued theme for the UI (Beta feature)
+                </p>
+              </div>
+              <div className="relative w-5 h-5">
+                <input 
+                  type="checkbox" 
+                  id="pink-theme" 
+                  className="sr-only"
+                  checked={settings.pinkTheme}
+                  onChange={(e) => handleChange('pinkTheme', e.target.checked)}
+                />
+                <label 
+                  htmlFor="pink-theme" 
+                  className={`absolute inset-0 rounded flex items-center justify-center border ${settings.pinkTheme ? 'bg-[#38144b] border-[#ff46c5]' : 'bg-[#1a1a1a] border-[#222222]'} cursor-pointer`}
+                >
+                  {settings.pinkTheme && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              </div>
             </div>
-            <button 
-              className="btn-secondary"
-              onClick={handleOpenAutoExecuteFolder}
-            >
-              Open Folder
-            </button>
           </div>
-        </div>
-        
-        <div className="settings-actions">
-          {!isElectron && (
-            <div className="browser-mode-message">
-              why are you here !!!!!!!!
-            </div>
-          )}
         </div>
       </div>
     </div>

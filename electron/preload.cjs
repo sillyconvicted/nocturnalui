@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld(
         'toggle-power-save-blocker',
         'warm-up-monaco',
         'read-roblox-logs',
+        'read-roblox-logs-preview', 
         'update-discord-status',
         'execute-auto-scripts',
         'open-autoexec-folder',
