@@ -14,7 +14,9 @@ export default function SettingsPage({ onSaveTabsManually }) {
     macosButtons: false, 
     hydrogenPortScanStart: 6969,
     hydrogenPortScanEnd: 7069,
-    pinkTheme: false
+    pinkTheme: false,
+    autoExecUltraguard: false,
+    autoExecNocturnalUI: false
   });
   
   const [isElectron, setIsElectron] = useState(false);
@@ -158,6 +160,42 @@ export default function SettingsPage({ onSaveTabsManually }) {
     }
     
     return <span className={statusClass}>{statusText}</span>;
+  };
+
+  useEffect(() => {
+    const handleDocsSearch = (event) => {
+      if (event.detail && event.detail.query) {
+        window.dispatchEvent(new CustomEvent('navigate', { detail: { target: 'docs' } }));
+        window.dispatchEvent(new CustomEvent('docs-search', { detail: { query: event.detail.query } }));
+      }
+    };
+    
+    window.addEventListener('docs-search', handleDocsSearch);
+    return () => window.removeEventListener('docs-search', handleDocsSearch);
+  }, []);
+
+  const toggleAutoExecScript = async (scriptKey) => {
+    if (!isElectron) return;
+    
+    try {
+      const newState = !settings[scriptKey === 'ultraguard' ? 'autoExecUltraguard' : 'autoExecNocturnalUI'];
+      handleChange(
+        scriptKey === 'ultraguard' ? 'autoExecUltraguard' : 'autoExecNocturnalUI', 
+        newState
+      );
+      
+      await window.electron.invoke('toggle-autoexec', {
+        script: scriptKey,
+        enabled: newState
+      });
+    } catch (error) {
+      console.error(error);
+
+      handleChange(
+        scriptKey === 'ultraguard' ? 'autoExecUltraguard' : 'autoExecNocturnalUI',
+        !newState
+      );
+    }
   };
 
   return (
@@ -381,6 +419,72 @@ export default function SettingsPage({ onSaveTabsManually }) {
                   className={`absolute inset-0 rounded flex items-center justify-center border ${settings.pinkTheme ? 'bg-[#38144b] border-[#ff46c5]' : 'bg-[#1a1a1a] border-[#222222]'} cursor-pointer`}
                 >
                   {settings.pinkTheme && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-lg font-medium mb-4 pb-2 border-b border-white/20">Experimental</h2>
+          
+          <div className="space-y-5">
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="text-sm font-medium">ULTRAGUARD+</label>
+                <p className="text-xs text-gray-500 mt-1">
+                UltraSigmaGuard+, provides extensive protection against malicious behavior in Lua scripts executed via Roblox exploit environments.
+                </p>
+              </div>
+              <div className="relative w-5 h-5">
+                <input 
+                  type="checkbox" 
+                  id="auto-exec-ultraguard" 
+                  className="sr-only"
+                  checked={settings.autoExecUltraguard}
+                  onChange={() => toggleAutoExecScript('ultraguard')}
+                />
+                <label 
+                  htmlFor="auto-exec-ultraguard" 
+                  className={`absolute inset-0 rounded flex items-center justify-center border ${
+                    settings.autoExecUltraguard ? 'bg-[#252525] border-[#333333]' : 'bg-[#1a1a1a] border-[#222222]'
+                  } cursor-pointer`}
+                >
+                  {settings.autoExecUltraguard && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="text-sm font-medium">Nocturnal Internal UI</label>
+                <p className="text-xs text-gray-500 mt-1">
+                  The internal version of the coolest UI in the world.
+                </p>
+              </div>
+              <div className="relative w-5 h-5">
+                <input 
+                  type="checkbox" 
+                  id="auto-exec-nocturnal" 
+                  className="sr-only"
+                  checked={settings.autoExecNocturnalUI}
+                  onChange={() => toggleAutoExecScript('nocturnal')}
+                />
+                <label 
+                  htmlFor="auto-exec-nocturnal" 
+                  className={`absolute inset-0 rounded flex items-center justify-center border ${
+                    settings.autoExecNocturnalUI ? 'bg-[#252525] border-[#333333]' : 'bg-[#1a1a1a] border-[#222222]'
+                  } cursor-pointer`}
+                >
+                  {settings.autoExecNocturnalUI && (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>

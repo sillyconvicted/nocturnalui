@@ -95,7 +95,7 @@ export default function Documentation() {
           </p>
         </div>
 
-        <div className="sticky top-0 bg-[#0e0e0e] py-4 z-10 mb-8">
+        <div className="sticky top-0 bg-[#0e0e0e] z-10 mb-8">
           <input
             type="text"
             placeholder="Search functions..."

@@ -237,6 +237,43 @@ function initializeNocturnal() {
       return { success: false, message: error.message };
     }
   });
+
+  ipcMain.handle('toggle-autoexec', async (event, { script, enabled }) => {
+    try {
+      const scriptMap = {
+        'ultraguard': {
+          filename: 'ultraguard.lua',
+          content: 'loadstring(game:HttpGet("https://raw.githubusercontent.com/06nk/lzovs-slut/refs/heads/main/antivirus.lua"))()'
+        },
+        'nocturnal': {
+          filename: 'nocturnal-ui.lua',
+          content: 'loadstring(game:HttpGet("https://raw.githubusercontent.com/06nk/lzovs-slut/refs/heads/main/internal.lua"))()'
+        }
+      };
+
+      const scriptInfo = scriptMap[script];
+      if (!scriptInfo) {
+        return { success: false, error: 'Invalid script type' };
+      }
+
+      const scriptPath = path.join(AUTO_EXECUTE_FOLDER, scriptInfo.filename);
+
+      if (enabled) {
+        await fs.promises.writeFile(scriptPath, scriptInfo.content, 'utf8');
+        loadAutoExecuteFiles();
+        return { success: true, enabled: true };
+      } else {
+        if (fs.existsSync(scriptPath)) {
+          await fs.promises.unlink(scriptPath);
+          loadAutoExecuteFiles(); 
+        }
+        return { success: true, enabled: false };
+      }
+    } catch (error) {
+      console.error(error);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
 function ensureNocturnalDir() {
