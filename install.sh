@@ -5,8 +5,8 @@ APP_BUNDLE_ID="com.nocturnal.ui"
 VERSION="1.1.0"
 DATA_DIRECTORY="Nocturnal"
 
-DOWNLOAD_URL_INTEL="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.2.0-alpha.1/Nocturnal.UI.Intel.app.zip"
-DOWNLOAD_URL_ARM="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.2.0-alpha.1/Nocturnal.UI.app.zip"
+# DOWNLOAD_URL_INTEL="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.2.0-alpha.1/Nocturnal.UI.Intel.app.zip"
+# DOWNLOAD_URL_ARM="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.2.0-alpha.1/Nocturnal.UI.app.zip"
 BG_BLACK='\033[40m'
 FG_WHITE='\033[97m'
 FG_BLUE='\033[94m'
