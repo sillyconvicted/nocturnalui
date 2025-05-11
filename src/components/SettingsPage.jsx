@@ -437,7 +437,7 @@ export default function SettingsPage({ onSaveTabsManually }) {
               <div>
                 <label className="text-sm font-medium">ULTRAGUARD+</label>
                 <p className="text-xs text-gray-500 mt-1">
-                UltraSigmaGuard+, provides extensive protection against malicious behavior in Lua scripts executed via Roblox exploit environments.
+                UltraSigmaGuard+, provides extensive protection against malicious behavior in Lua scripts.
                 </p>
               </div>
               <div className="relative w-5 h-5">
@@ -491,6 +491,25 @@ export default function SettingsPage({ onSaveTabsManually }) {
                   )}
                 </label>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-lg font-medium mb-4 pb-2 border-b border-white/20">Auto Execute</h2>
+          
+          <div className="space-y-5">
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="text-sm font-medium">Auto Execute Folder</label>
+              </div>
+              <button
+                onClick={handleOpenAutoExecuteFolder}
+                className="px-3 py-1.5 rounded text-sm transition-colors"
+                style={{ backgroundColor: 'transparent' }}
+              >
+                Open Folder
+              </button>
             </div>
           </div>
         </div>
