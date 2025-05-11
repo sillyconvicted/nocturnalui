@@ -44,7 +44,9 @@ contextBridge.exposeInMainWorld(
         'get-autoexec-info',
         'load-local-scripts',
         'save-local-scripts',
-        'show-notification'
+        'show-notification',
+        'execute-tool', 
+        'toggle-autoexec'
       ];
       
       if (validChannels.includes(channel)) {

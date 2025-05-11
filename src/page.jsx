@@ -232,24 +232,16 @@ export default function Home() {
   };
 
   const executeCode = async () => {
-    if (!currentCode || currentCode.trim() === '')
-      alert('I cant execute an empty script.')
-      return
+    if (!currentCode || currentCode.trim() === '') {
+      alert('Cannot execute empty script');
+      return;
+    }
 
     if (typeof window.electron !== 'undefined') {
       try {
         await window.electron.invoke('toggle-power-save-blocker', true);
         
-        let checkResult;
-        try {
-          checkResult = await window.electron.invoke('check-hydrogen');
-        } catch (connectionError) {
-          console.error("Error checking Hydrogen connection:", connectionError);
-          alert("Error checking Hydrogen connection: " + connectionError.message);
-          await window.electron.invoke('toggle-power-save-blocker', false);
-          return;
-        }
-        
+        const checkResult = await window.electron.invoke('check-hydrogen');
         if (!checkResult || !checkResult.connected) {
           alert("Cannot connect to Hydrogen! Please make sure it's running.");
           await window.electron.invoke('toggle-power-save-blocker', false);
@@ -257,19 +249,18 @@ export default function Home() {
         }
         
         const result = await window.electron.invoke('execute-code', currentCode);
-
         await window.electron.invoke('toggle-power-save-blocker', false);
         
         if (!result.success) {
-          alert(`${result.message}`);
+          alert(result.message);
         }
       } catch (error) {
         await window.electron.invoke('toggle-power-save-blocker', false);
         console.error(error);
-        alert(`${error.message}`);
+        alert(error.message);
       }
     } else {
-      alert("NocturnalUI is not running in Electron.");
+      alert('NocturnalUI is not running in Electron');
     }
   };
 

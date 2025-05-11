@@ -487,37 +487,60 @@ async function executeScript(scriptContent) {
     throw new Error('Empty script body');
   }
 
-  if (!currentHydrogenPort) {
-    currentHydrogenPort = await findHydrogenServer();
-    if (!currentHydrogenPort) {
-      throw new Error('No Hydrogen server available');
-    }
-  }
-
   try {
-    discordRPC.setExecutingStatus();
-    
-    const postUrl = `http://127.0.0.1:${currentHydrogenPort}/execute`;
-    const response = await fetch(postUrl, {
+    if (currentHydrogenPort) {
+      try {
+        const testUrl = `http://127.0.0.1:${currentHydrogenPort}/secret`;
+        const testRes = await fetch(testUrl, { method: 'GET' });
+        const testText = await testRes.text();
+        
+        if (testText !== '0xdeadbeef') {
+          currentHydrogenPort = null;
+        }
+      } catch (e) {
+        currentHydrogenPort = null;
+      }
+    }
+
+    if (!currentHydrogenPort) {
+      for (let port = START_PORT; port <= END_PORT; port++) {
+        try {
+          const res = await fetch(`http://127.0.0.1:${port}/secret`);
+          const text = await res.text();
+          if (text === '0xdeadbeef') {
+            currentHydrogenPort = port;
+            break;
+          }
+        } catch (e) {
+        }
+      }
+    }
+
+    if (!currentHydrogenPort) {
+      throw new Error('Could not find Hydrogen server');
+    }
+
+    const response = await fetch(`http://127.0.0.1:${currentHydrogenPort}/execute`, {
       method: 'POST',
+      body: scriptContent,
       headers: {
         'Content-Type': 'text/plain'
       },
-      body: scriptContent
+      timeout: 1000
     });
 
-    if (response.ok) {
-      const resultText = await response.text();
-      return { success: true, message: resultText };
-    } else {
+    if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      throw new Error(`Execution failed (${response.status}): ${errorText}`);
     }
+
+    const resultText = await response.text();
+    return { success: true, message: resultText };
+
   } catch (error) {
+    console.error(error);
     currentHydrogenPort = null;
     throw error;
-  } finally {
-    discordRPC.setCodingStatus();
   }
 }
 
