@@ -11,7 +11,7 @@ export default function CreditsPage() {
         {
             name: 'cover',
             role: 'Co-Owner & Internal UI Lead Developer & Founder ULTRAGUARD+',
-            description: 'unprofessional nigger',
+            description: 'unprofessional skiddie',
         }
       ]
     },
