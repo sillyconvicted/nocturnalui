@@ -50,12 +50,11 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
   }, [tabId]);
 
   useEffect(() => {
-    if (!monacoRef.current || scriptTabs?.length <= 1) return;
+    if (!monacoRef.current || !scriptTabs) return;
     
     const preloadTabs = async () => {
       const monaco = monacoRef.current;
-      
-      if (!monaco) return;
+      if (!monaco || !scriptTabs || scriptTabs.length <= 1) return;
       
       const currentTabIndex = scriptTabs.findIndex(tab => tab.id === tabId);
       if (currentTabIndex > -1) {
@@ -369,12 +368,10 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
   useEffect(() => {
     if (isTabSwitching) {
       isUpdatingRef.current = true;
-      
       requestAnimationFrame(() => {
         const container = document.querySelector('.monaco-editor-container');
         if (container) {
           container.classList.add('monaco-editor-hidden');
-          
           if (editorRef.current) {
             editorRef.current.updateOptions({ readOnly: true });
           }
@@ -385,12 +382,10 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
         const container = document.querySelector('.monaco-editor-container');
         if (container) {
           container.classList.remove('monaco-editor-hidden');
-          
           setTimeout(() => {
             if (editorRef.current) {
               editorRef.current.updateOptions({ readOnly: false });
             }
-            
             isUpdatingRef.current = false;
           }, 50);
         }
@@ -520,6 +515,24 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (isTabSwitching) {
+      const container = document.querySelector('.monaco-editor-container');
+      if (container) {
+        container.style.transition = 'none';
+        container.style.opacity = '0.95';
+      }
+    } else {
+      requestAnimationFrame(() => {
+        const container = document.querySelector('.monaco-editor-container');
+        if (container) {
+          container.style.transition = 'opacity 0.15s ease-out';
+          container.style.opacity = '1';
+        }
+      });
+    }
+  }, [isTabSwitching]);
 
   const handleExecute = async () => {
     if (isCodeEmpty) return;

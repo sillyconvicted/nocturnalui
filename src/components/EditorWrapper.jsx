@@ -1,26 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import MonacoEditor from "./MonacoEditor";
 
-export default function EditorWrapper({ code, setCode, onExecute, tabName, tabId, isTabSwitching }) {
+export default function EditorWrapper({ code, setCode, onExecute, tabName, tabId, isTabSwitching, scriptTabs }) {
   const [lastStableTabId, setLastStableTabId] = useState(tabId);
   const [localTabId, setLocalTabId] = useState(tabId);
+  const previousTabId = useRef(tabId);
   
   useEffect(() => {
-    let timeoutId;
-    
-    if (!isTabSwitching) {
-      timeoutId = setTimeout(() => {
+    if (tabId !== previousTabId.current) {
+      previousTabId.current = tabId;
+      if (!isTabSwitching) {
         setLocalTabId(tabId);
         setLastStableTabId(tabId);
-      }, 20);
+      }
     }
-    
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [isTabSwitching, tabId]);
+  }, [tabId, isTabSwitching]);
 
   useEffect(() => {
     const updateDiscordStatus = async () => {
@@ -64,6 +60,7 @@ export default function EditorWrapper({ code, setCode, onExecute, tabName, tabId
         onExecute={handleExecute}
         tabId={isTabSwitching ? lastStableTabId : localTabId}
         isTabSwitching={isTabSwitching} 
+        scriptTabs={scriptTabs}
       />
     </div>
   );
