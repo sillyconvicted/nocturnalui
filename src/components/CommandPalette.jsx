@@ -268,6 +268,30 @@ export default function CommandPalette({ isVisible, setIsVisible, editor, monaco
         return;
       }
     }
+
+    if (query.trim().toLowerCase().startsWith('docs:')) {
+      const searchQuery = query.substring(5).trim();
+      const docsCommand = {
+        id: 'search-docs',
+        label: `Search Documentation for "${searchQuery}"`,
+        category: 'Documentation Search',
+        action: () => {
+          window.dispatchEvent(new CustomEvent('navigate', { detail: { target: 'docs' } }));
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('docs-search', { detail: { query: searchQuery } }));
+            setIsVisible(false);
+          }, 100);
+        },
+        description: `Search documentation for "${searchQuery}"`
+      };
+      
+      setFilteredCommands([docsCommand]);
+      setSelectedIndex(0);
+      setCategorizedCommands({
+        'Documentation Search': [docsCommand]
+      });
+      return;
+    }
     
     const lowerQuery = query.toLowerCase();
     const filtered = commands.filter(cmd => {

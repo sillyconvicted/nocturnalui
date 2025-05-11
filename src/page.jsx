@@ -11,6 +11,7 @@ import EditorPreload from "./components/EditorPreload";
 import ScriptHub from "./components/ScriptHub";
 import CommandPalette from "./components/CommandPalette";
 import Documentation from "./components/Documentation";
+import CreditsPage from "./components/CreditsPage";
 
 const DEFAULT_TAB = { id: 'default', name: 'Script 1', code: 'print("Hello, Hydrogen!")' };
 
@@ -333,6 +334,7 @@ export default function Home() {
     { id: 'console', name: 'Logs', icon: '' },
     { id: 'scripthub', name: 'Script Library', icon: '' },
     { id: 'docs', name: 'Documentation', icon: '' },
+    { id: 'credits', name: 'Credits', icon: '' },
     { id: 'settings', name: 'Settings', icon: '' },
   ];
 
@@ -377,6 +379,8 @@ export default function Home() {
         return <Documentation />;
       case "settings":
         return <SettingsPage onSaveTabsManually={saveTabsManually} />;
+      case "credits":
+        return <CreditsPage />;
       default:
         return <HomePage />;
     }

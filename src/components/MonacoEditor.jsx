@@ -570,7 +570,7 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
               scrollBeyondLastLine: false,
               fontFamily: "JetBrains Mono, monospace",
               smoothScrolling: true, 
-              contextmenu: true,
+              contextmenu: false,
               cursorBlinking: "phase", 
               cursorSmoothCaretAnimation: true, 
               formatOnPaste: false,
