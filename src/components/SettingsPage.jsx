@@ -216,7 +216,7 @@ export default function SettingsPage({ onSaveTabsManually }) {
               <div className="flex items-center gap-2">
                 <input 
                   type="number" 
-                  className="w-20 text-right bg-[#131313] border border-gray-800 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-gray-600"
+                  className="h-[30px] bg-black/20 border border-white/15 rounded text-sm text-white focus:border-white/70 focus:outline-none transition-colors leading-none px-1"
                   value={settings.fontSize} 
                   onChange={(e) => handleNumberChange('fontSize', e.target.value)}
                   min={8}
@@ -229,9 +229,14 @@ export default function SettingsPage({ onSaveTabsManually }) {
             <div className="flex justify-between items-center">
               <label className="text-sm font-medium">Tab Size</label>
               <select 
-                className="w-32 bg-[#131313] border border-gray-800 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-gray-600 appearance-none"
+                className="w-32 h-[30px] bg-black/20 border border-white/15 rounded text-sm text-white focus:border-white/70 focus:outline-none transition-colors appearance-none leading-none px-1.5"
                 value={settings.tabSize}
                 onChange={(e) => handleNumberChange('tabSize', e.target.value)}
+                style={{ backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                         backgroundRepeat: 'no-repeat',
+                         backgroundPosition: 'right 6px center',
+                         backgroundSize: '12px',
+                         paddingRight: '24px' }}
               >
                 <option value={2}>2 spaces</option>
                 <option value={4}>4 spaces</option>
@@ -352,7 +357,7 @@ export default function SettingsPage({ onSaveTabsManually }) {
               <div className="flex items-center gap-2">
                 <input 
                   type="number" 
-                  className="w-20 text-center bg-[#131313] border border-gray-800 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-gray-600"
+                  className="w-24 h-[30px] bg-black/20 border border-white/15 rounded text-center text-sm text-white focus:border-white/70 focus:outline-none transition-colors leading-none px-1.5"
                   value={settings.hydrogenPortScanStart} 
                   onChange={(e) => handleNumberChange('hydrogenPortScanStart', e.target.value)}
                   min={1000}
@@ -361,7 +366,7 @@ export default function SettingsPage({ onSaveTabsManually }) {
                 <span className="text-xs text-gray-500">to</span>
                 <input 
                   type="number" 
-                  className="w-20 text-center bg-[#131313] border border-gray-800 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-gray-600"
+                  className="w-24 h-[30px] bg-black/20 border border-white/15 rounded text-center text-sm text-white focus:border-white/70 focus:outline-none transition-colors leading-none px-1.5"
                   value={settings.hydrogenPortScanEnd} 
                   onChange={(e) => handleNumberChange('hydrogenPortScanEnd', e.target.value)}
                   min={1000}

@@ -448,7 +448,7 @@ export default function CommandPalette({ isVisible, setIsVisible, editor, monaco
 
   return (
     <div 
-      className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-50 flex items-start justify-center pt-[120px]"
+      className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-50 flex items-center justify-center"
       onKeyDown={e => {
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -462,7 +462,7 @@ export default function CommandPalette({ isVisible, setIsVisible, editor, monaco
         }
       }}
     >
-      <div className="w-[550px] max-w-[90vw] bg-[#121212] rounded-xl overflow-hidden flex flex-col shadow-2xl border border-[#333333]">
+      <div className="w-[550px] max-w-[calc(100vw-2rem)] bg-[#121212] rounded-xl overflow-hidden flex flex-col shadow-2xl border border-[#333333]">
         <div className="p-3">
           <div className="relative flex items-center">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666666]">

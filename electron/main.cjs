@@ -14,10 +14,15 @@ const NOCTURNAL_FOLDER = path.join(os.homedir(), 'Nocturnal');
 const TABS_FILE = path.join(NOCTURNAL_FOLDER, 'tabs.json');
 const SETTINGS_FILE = path.join(NOCTURNAL_FOLDER, 'settings.json');
 const AUTO_EXECUTE_FOLDER = path.join(NOCTURNAL_FOLDER, 'autoexecute');
+const ULTRAGUARD_FILE = path.join(AUTO_EXECUTE_FOLDER, 'ultraguard.lua');
+const NOCTURNAL_UI_FILE = path.join(AUTO_EXECUTE_FOLDER, 'nocturnal_ui.lua');
 let autoExecuteFiles = [];
 let lastJoinTimestamp = 0;
 let lastCheckedLogTimestamp = null;
 let joinCheckInterval = null;
+
+const EXECUTE_COOLDOWN = 10000; 
+const processedJoins = new Set();
 
 process.on('uncaughtException', (error) => {
   dialog.showErrorBox('Error', `Join our discord server.`);
@@ -237,6 +242,33 @@ function initializeNocturnal() {
       return { success: false, message: error.message };
     }
   });
+
+  ipcMain.handle('toggle-autoexec', async (event, { script, enabled }) => {
+    try {
+      if (script === 'ultraguard') {
+        if (enabled) {
+          const content = `loadstring(game:HttpGet("https://raw.githubusercontent.com/06nk/lzovs-slut/refs/heads/main/antivirus.lua"))()`;
+          fs.writeFileSync(ULTRAGUARD_FILE, content, 'utf8');
+        } else if (fs.existsSync(ULTRAGUARD_FILE)) {
+          fs.unlinkSync(ULTRAGUARD_FILE);
+        }
+      } else if (script === 'nocturnal') {
+        if (enabled) {
+          const content = `loadstring(game:HttpGet("https://raw.githubusercontent.com/06nk/lzovs-slut/refs/heads/main/internal.lua"))()`;
+          fs.writeFileSync(NOCTURNAL_UI_FILE, content, 'utf8');
+        } else if (fs.existsSync(NOCTURNAL_UI_FILE)) {
+          fs.unlinkSync(NOCTURNAL_UI_FILE);
+        }
+      }
+      
+      loadAutoExecuteFiles();
+      
+      return { success: true };
+    } catch (error) {
+      console.error(error);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
 function ensureNocturnalDir() {
@@ -305,6 +337,10 @@ function loadSettings() {
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
       const settings = JSON.parse(data);
+
+      settings.autoExecUltraguard = fs.existsSync(ULTRAGUARD_FILE);
+      settings.autoExecNocturnalUI = fs.existsSync(NOCTURNAL_UI_FILE);
+      
       return { 
         success: true, 
         data: settings
@@ -758,12 +794,25 @@ async function checkForRecentGameJoin() {
     
     const joinTime = new Date(timestamp).getTime();
     const now = Date.now();
+
+    if (processedJoins.has(timestamp)) return;
+    
     const isRecentJoin = now - joinTime < 30000;
     const isNewJoin = lastCheckedLogTimestamp === null || joinTime > lastCheckedLogTimestamp;
+    const notInCooldown = now - lastJoinTimestamp > EXECUTE_COOLDOWN;
     
-    if (isRecentJoin && isNewJoin) {
+    if (isRecentJoin && isNewJoin && notInCooldown) {
       lastJoinTimestamp = now;
       lastCheckedLogTimestamp = joinTime;
+      processedJoins.add(timestamp);
+
+      const oldThreshold = now - 60000; 
+      processedJoins.forEach(ts => {
+        if (new Date(ts).getTime() < oldThreshold) {
+          processedJoins.delete(ts);
+        }
+      });
+
       for (const filePath of autoExecuteFiles) {
         try {
           const scriptContent = fs.readFileSync(filePath, 'utf8');

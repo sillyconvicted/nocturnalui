@@ -556,27 +556,6 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
             onMount={handleEditorDidMount}
             loading={<div className="w-full h-full bg-[#121212]" />}
             theme="vs-dark"
-            beforeMount={(monaco) => {
-              setIsEditorLoading(true);
-              
-              const isPinkTheme = document.body.classList.contains('pink-theme');
-              
-              monaco.editor.defineTheme('vs-dark', {
-                base: 'vs-dark',
-                inherit: true,
-                rules: [],
-                colors: {
-                  'editor.background': isPinkTheme ? '#1a0e25' : '#121212',
-                  'editor.foreground': '#ffffff',
-                  'editorLineNumber.foreground': isPinkTheme ? '#ff68ce' : '#858585',
-                  'editorLineNumber.activeForeground': isPinkTheme ? '#ff8cda' : '#c6c6c6',
-                  'editorCursor.foreground': isPinkTheme ? '#ff46c5' : '#ffffff',
-                  'editor.selectionBackground': isPinkTheme ? '#481b63' : '#264f78',
-                  'editor.lineHighlightBackground': isPinkTheme ? 'rgba(255, 70, 197, 0.15)' : 'rgba(33, 33, 33, 0.4)',
-                  'editor.inactiveSelectionBackground': '#3a3d41'
-                }
-              });
-            }}
             options={{
               fontSize: editorSettings.fontSize,
               minimap: { enabled: editorSettings.minimap },
@@ -603,7 +582,12 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
                 showVariables: true,
                 showWords: true,
                 showProperties: true
-              }
+              },
+              scrollbar: {
+                horizontal: 'hidden',
+                useShadows: false,
+                verticalScrollbarSize: 6,
+              },
             }}
             className="font-mono select-text cursor-text"
           />
