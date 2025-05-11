@@ -237,43 +237,6 @@ function initializeNocturnal() {
       return { success: false, message: error.message };
     }
   });
-
-  ipcMain.handle('toggle-autoexec', async (event, { script, enabled }) => {
-    try {
-      const scriptMap = {
-        'ultraguard': {
-          filename: 'ultraguard.lua',
-          content: 'loadstring(game:HttpGet("https://raw.githubusercontent.com/06nk/lzovs-slut/refs/heads/main/antivirus.lua"))()'
-        },
-        'nocturnal': {
-          filename: 'nocturnal-ui.lua',
-          content: 'loadstring(game:HttpGet("https://raw.githubusercontent.com/06nk/lzovs-slut/refs/heads/main/internal.lua"))()'
-        }
-      };
-
-      const scriptInfo = scriptMap[script];
-      if (!scriptInfo) {
-        return { success: false, error: 'Invalid script type' };
-      }
-
-      const scriptPath = path.join(AUTO_EXECUTE_FOLDER, scriptInfo.filename);
-
-      if (enabled) {
-        await fs.promises.writeFile(scriptPath, scriptInfo.content, 'utf8');
-        loadAutoExecuteFiles();
-        return { success: true, enabled: true };
-      } else {
-        if (fs.existsSync(scriptPath)) {
-          await fs.promises.unlink(scriptPath);
-          loadAutoExecuteFiles(); 
-        }
-        return { success: true, enabled: false };
-      }
-    } catch (error) {
-      console.error(error);
-      return { success: false, error: error.message };
-    }
-  });
 }
 
 function ensureNocturnalDir() {
@@ -487,60 +450,37 @@ async function executeScript(scriptContent) {
     throw new Error('Empty script body');
   }
 
+  if (!currentHydrogenPort) {
+    currentHydrogenPort = await findHydrogenServer();
+    if (!currentHydrogenPort) {
+      throw new Error('No Hydrogen server available');
+    }
+  }
+
   try {
-    if (currentHydrogenPort) {
-      try {
-        const testUrl = `http://127.0.0.1:${currentHydrogenPort}/secret`;
-        const testRes = await fetch(testUrl, { method: 'GET' });
-        const testText = await testRes.text();
-        
-        if (testText !== '0xdeadbeef') {
-          currentHydrogenPort = null;
-        }
-      } catch (e) {
-        currentHydrogenPort = null;
-      }
-    }
-
-    if (!currentHydrogenPort) {
-      for (let port = START_PORT; port <= END_PORT; port++) {
-        try {
-          const res = await fetch(`http://127.0.0.1:${port}/secret`);
-          const text = await res.text();
-          if (text === '0xdeadbeef') {
-            currentHydrogenPort = port;
-            break;
-          }
-        } catch (e) {
-        }
-      }
-    }
-
-    if (!currentHydrogenPort) {
-      throw new Error('Could not find Hydrogen server');
-    }
-
-    const response = await fetch(`http://127.0.0.1:${currentHydrogenPort}/execute`, {
+    discordRPC.setExecutingStatus();
+    
+    const postUrl = `http://127.0.0.1:${currentHydrogenPort}/execute`;
+    const response = await fetch(postUrl, {
       method: 'POST',
-      body: scriptContent,
       headers: {
         'Content-Type': 'text/plain'
       },
-      timeout: 1000
+      body: scriptContent
     });
 
-    if (!response.ok) {
+    if (response.ok) {
+      const resultText = await response.text();
+      return { success: true, message: resultText };
+    } else {
       const errorText = await response.text();
-      throw new Error(`Execution failed (${response.status}): ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-
-    const resultText = await response.text();
-    return { success: true, message: resultText };
-
   } catch (error) {
-    console.error(error);
     currentHydrogenPort = null;
     throw error;
+  } finally {
+    discordRPC.setCodingStatus();
   }
 }
 
@@ -781,7 +721,7 @@ function startLogMonitoring() {
     console.error(error);
   }
   
-  joinCheckInterval = setInterval(checkForRecentGameJoin, 5000);
+  joinCheckInterval = setInterval(checkForRecentGameJoin, 1000);
 }
 
 async function checkForRecentGameJoin() {
@@ -793,22 +733,23 @@ async function checkForRecentGameJoin() {
     
     const files = fs.readdirSync(robloxLogsPath)
       .filter(file => file.endsWith('.log'))
-      .map(file => {
-        const filePath = path.join(robloxLogsPath, file);
-        const stats = fs.statSync(filePath);
-        return { name: file, path: filePath, mtime: stats.mtime };
-      })
+      .map(file => ({
+        name: file,
+        path: path.join(robloxLogsPath, file),
+        mtime: fs.statSync(path.join(robloxLogsPath, file)).mtime
+      }))
       .sort((a, b) => b.mtime - a.mtime);
     
     if (files.length === 0) return;
     
     const latestLog = files[0];
     const logContent = fs.readFileSync(latestLog.path, 'utf8');
-    
     const lines = logContent.split('\n');
-    const joinLines = lines.filter(line => {
-      return line.includes('[FLog::Output] ! Joining game');
-    });
+
+    const joinLines = lines.filter(line => 
+      line.includes('[FLog::Output] ! Joining game') ||
+      line.includes('[FLog::Output] Connection accepted')
+    );
     
     if (joinLines.length === 0) return;
     
@@ -817,14 +758,12 @@ async function checkForRecentGameJoin() {
     
     const joinTime = new Date(timestamp).getTime();
     const now = Date.now();
-    const isRecentJoin = now - joinTime < 30000; 
+    const isRecentJoin = now - joinTime < 30000;
     const isNewJoin = lastCheckedLogTimestamp === null || joinTime > lastCheckedLogTimestamp;
     
-    if (isRecentJoin && isNewJoin && now - lastJoinTimestamp > 60000) {
+    if (isRecentJoin && isNewJoin) {
       lastJoinTimestamp = now;
       lastCheckedLogTimestamp = joinTime;
-      
-      await new Promise(resolve => setTimeout(resolve, 2500));
       for (const filePath of autoExecuteFiles) {
         try {
           const scriptContent = fs.readFileSync(filePath, 'utf8');
