@@ -754,6 +754,39 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
         body.pink-theme .monaco-editor-container {
           box-shadow: inset 0 0 30px rgba(255, 70, 197, 0.03);
         }
+        .monaco-editor .deprecated {
+          text-decoration: underline wavy #FF5252 !important;
+          font-style: italic !important;
+          color: #FF5252 !important;
+          font-weight: bold !important;
+        }
+        .monaco-editor .deprecated ~ .deprecated {
+          text-decoration: underline wavy #FF5252 !important;
+          font-style: italic !important;
+          color: #FF5252 !important;
+          font-weight: bold !important;
+        }
+        .monaco-editor .mtk1.deprecated {
+          color: #FF5252 !important;
+        }
+        .monaco-editor .suggest-widget .monaco-list .monaco-list-row .monaco-highlighted-label .deprecated {
+          color: #FF5252 !important;
+          font-style: italic !important;
+          text-decoration: underline wavy #FF5252 !important;
+        }
+        .monaco-editor .suggest-widget .monaco-list .monaco-list-row[aria-label*="[DEPRECATED]"] {
+          padding-left: 4px !important;
+        }
+        .monaco-editor .suggest-widget .monaco-list .monaco-list-row[aria-label*="[DEPRECATED]"]:before {
+          content: "⚠️";
+          position: absolute;
+          left: -18px;
+          font-size: 12px;
+        }
+        body.pink-theme .monaco-editor .deprecated {
+          color: #FF1493 !important;
+          text-decoration-color: #FF1493 !important;
+        }
       `}</style>
     </div>
   );
