@@ -28,13 +28,6 @@ export const executorFunctions = [
     insertText: 'setclipboard(${1:text})',
   },
   {
-    label: 'identifyexecutor',
-    kind: 1,
-    detail: 'identifyexecutor()',
-    documentation: 'Returns the name and version of the current executor.',
-    insertText: 'identifyexecutor()',
-  },
-  {
     label: 'getsenv',
     kind: 1,
     detail: 'getsenv(script)',
