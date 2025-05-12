@@ -1039,7 +1039,7 @@ export function setupLuaLanguage(monaco) {
       { token: 'roblox', foreground: '4EC9B0' },       
       { token: 'executor', foreground: '4FC1FF' },     
       { token: 'constant', foreground: '569CD6', fontStyle: 'bold' }, 
-      { token: 'identifier', foreground: 'DCDCAA' },   
+      { token: 'identifier', foreground: 'D4D4D4' },  
       { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
       { token: 'string', foreground: 'CE9178' },       
       { token: 'string.escape', foreground: 'D7BA7D' }, 
@@ -1048,15 +1048,16 @@ export function setupLuaLanguage(monaco) {
       { token: 'number.binary', foreground: 'B5CEA8' }, 
       { token: 'number.float', foreground: 'B5CEA8' }, 
       { token: 'operator', foreground: 'D4D4D4' },     
-      { token: 'delimiter', foreground: 'CCCCCC' },
+      { token: 'delimiter', foreground: 'D4D4D4' },  
       { 
         token: 'deprecated', 
         foreground: 'FF5252', 
         fontStyle: 'italic bold underline'
-      } 
+      }, 
+      { token: '', foreground: 'D4D4D4' }
     ],
     colors: {
-      'editor.foreground': '#FFFFFF',
+      'editor.foreground': '#D4D4D4',  
       'editor.background': '#121212',
       'editor.selectionBackground': '#264F78',
       'editor.lineHighlightBackground': '#2A2A2A',
@@ -1070,6 +1071,82 @@ export function setupLuaLanguage(monaco) {
   });
 
   monaco.editor.setTheme('lua-dark');
+
+  monaco.languages.registerDocumentSemanticTokensProvider('lua', {
+    getLegend: () => ({
+      tokenTypes: ['variable', 'function'],
+      tokenModifiers: ['declaration', 'usage']
+    }),
+    provideDocumentSemanticTokens: (model) => {
+      const lines = model.getLinesContent();
+      const tokens = [];
+      const localDeclarations = new Map();
+      const functionDeclarations = new Set();
+      
+      lines.forEach((line, lineIndex) => {
+        const localMatches = line.matchAll(/\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=/g);
+        for (const match of localMatches) {
+          localDeclarations.set(match[1], true);
+        }
+        
+        const functionMatches = line.matchAll(/\b(?:local\s+)?function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g);
+        for (const match of functionMatches) {
+          functionDeclarations.add(match[1]);
+        }
+      });
+
+      lines.forEach((line, lineIndex) => {
+        const variableMatches = line.matchAll(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*[=\(])/g);
+        for (const match of variableMatches) {
+          const varName = match[1];
+          if (!localDeclarations.has(varName) && 
+              !functionDeclarations.has(varName) && 
+              !robloxApis.some(api => api.label === varName) &&
+              !executorFunctions.some(func => func.label === varName) &&
+              !['print', 'warn', 'error', '_G', 'game', 'workspace', 'script'].includes(varName)) {
+            
+            monaco.editor.setModelMarkers(model, 'lua', [{
+              message: `Variable '${varName}' is not defined`,
+              severity: monaco.MarkerSeverity.Warning,
+              startLineNumber: lineIndex + 1,
+              startColumn: match.index + 1,
+              endLineNumber: lineIndex + 1,
+              endColumn: match.index + match[0].length + 1
+            }]);
+          }
+        }
+        
+        const functionMatches = line.matchAll(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g);
+        for (const match of functionMatches) {
+          const funcName = match[1];
+          if (!functionDeclarations.has(funcName) && 
+              !robloxApis.some(api => api.label === funcName) &&
+              !executorFunctions.some(func => func.label === funcName)) {
+            
+            monaco.editor.setModelMarkers(model, 'lua', [{
+              message: `Function '${funcName}' is not defined`,
+              severity: monaco.MarkerSeverity.Warning,
+              startLineNumber: lineIndex + 1,
+              startColumn: match.index + 1,
+              endLineNumber: lineIndex + 1,
+              endColumn: match.index + match[0].length + 1
+            }]);
+          }
+        }
+      });
+
+      return { data: new Uint32Array(tokens) };
+    },
+    releaseDocumentSemanticTokens: () => {}
+  });
+
+  monaco.editor.onDidCreateModel(model => {
+    if (model.getLanguageId() === 'lua') {
+      model.onDidChangeContent(() => {
+        monaco.languages.semanticTokens.refresh();
+      });
+    }
+  });
 }
 
 export default setupLuaLanguage;
