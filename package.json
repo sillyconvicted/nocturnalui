@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev\" \"electron .\"",
-    "electron:build": "vite build && electron-forge package",
+    "electron:build": "vite build && electron-builder",
     "debug": "node scripts/debug-app.js",
     "rebuild": "rm -rf dist && npm run build && npm run electron:build",
     "debug-app": "node scripts/run-with-logging.cjs",
@@ -45,6 +45,7 @@
     "@vitejs/plugin-react": "^4.0.0",
     "concurrently": "^8.0.1",
     "electron": "^24.8.8",
+    "electron-builder": "^26.0.12",
     "vite": "^6.3.5",
     "vite-plugin-electron": "^0.29.0"
   },
