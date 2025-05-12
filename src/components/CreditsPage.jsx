@@ -94,10 +94,10 @@ export default function CreditsPage() {
 
         <div className="mt-12 pt-8 border-t border-[#222] text-center">
           <p className="text-sm text-gray-500">
-            © 2024 Nocturnal UI. All rights reserved.
+            © 2025 Nocturnal UI. All rights reserved.
           </p>
           <p className="text-xs text-gray-600 mt-1">
-            Version 1.0.1-alpha.1
+            Version 1.2.0-alpha.1
           </p>
         </div>
       </div>

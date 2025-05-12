@@ -252,30 +252,29 @@ export default function SettingsPage({ onSaveTabsManually }) {
               </div>
             </div>
 
+            {/* Tab Size Dropdown */}
             <div className="flex justify-between items-center">
               <label className="text-sm font-medium">Tab Size</label>
-              <div className="relative">
+              <div className="flex items-center gap-2">
                 <select 
-                  className="w-32 h-7 bg-black/20 border border-white/15 rounded text-sm text-white focus:border-white/70 focus:outline-none transition-colors appearance-none"
+                  className="w-[35px] h-[26px] bg-black/20 border border-white/15 rounded text-sm text-white focus:border-white/70 focus:outline-none appearance-none text-center"
                   value={settings.tabSize}
                   onChange={(e) => handleNumberChange('tabSize', e.target.value)}
-                  style={{ 
-                    padding: '0 24px 0 8px',
-                    lineHeight: '28px'
+                  style={{
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    padding: '0',
+                    margin: '0'
                   }}
                 >
-                  <option value={2}>2 spaces</option>
-                  <option value={4}>4 spaces</option>
-                  <option value={8}>8 spaces</option>
+                  <option value={2}>2</option>
+                  <option value={4}>4</option>
+                  <option value={8}>8</option>
                 </select>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/60">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
-                </div>
+                <span className="text-xs text-gray-500 select-none">spaces</span>
               </div>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <label className="text-sm font-medium">Word Wrap</label>
               <div className="relative w-5 h-5">
@@ -389,26 +388,51 @@ export default function SettingsPage({ onSaveTabsManually }) {
               </div>
               <div className="flex items-center gap-2">
                 <input 
-                  type="number" 
-                  className="w-24 h-7 bg-black/20 border border-white/15 rounded text-sm text-white focus:border-white/70 focus:outline-none transition-colors text-center"
+                  type="number"
+                  pattern="\d*" 
+                  className="w-[60px] h-[26px] bg-black/20 border border-white/15 rounded text-sm text-white focus:border-white/70 focus:outline-none"
                   value={settings.hydrogenPortScanStart} 
                   onChange={(e) => handleNumberChange('hydrogenPortScanStart', e.target.value)}
                   min={1000}
                   max={65535}
-                  style={{ lineHeight: '28px', padding: '0 4px' }}
+                  style={{
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'textfield',
+                    textAlign: 'center',
+                    padding: '0',
+                    margin: '0'
+                  }}
                 />
-                <span className="text-xs text-gray-500">to</span>
+                <span className="text-xs text-gray-500 select-none">to</span>
                 <input 
-                  type="number" 
-                  className="w-24 h-7 bg-black/20 border border-white/15 rounded text-sm text-white focus:border-white/70 focus:outline-none transition-colors text-center"
+                  type="number"
+                  pattern="\d*" 
+                  className="w-[60px] h-[26px] bg-black/20 border border-white/15 rounded text-sm text-white focus:border-white/70 focus:outline-none"
                   value={settings.hydrogenPortScanEnd} 
                   onChange={(e) => handleNumberChange('hydrogenPortScanEnd', e.target.value)}
                   min={1000}
                   max={65535}
-                  style={{ lineHeight: '28px', padding: '0 4px' }}
+                  style={{
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'textfield',
+                    textAlign: 'center',
+                    padding: '0',
+                    margin: '0'
+                  }}
                 />
               </div>
             </div>
+
+            <style jsx global>{`
+              input[type=number]::-webkit-inner-spin-button,
+              input[type=number]::-webkit-outer-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+              }
+              input[type=number] {
+                -moz-appearance: textfield;
+              }
+            `}</style>
 
             <div className="flex justify-between items-center">
               <div>
