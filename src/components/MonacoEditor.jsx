@@ -6,19 +6,22 @@ import { setupLuaLanguage } from "../lib/luaLanguageSetup";
 import { injectMonacoIcons } from "../lib/monacoIconFont";
 import CommandPalette from "./CommandPalette";
 
+window.__LUA_LANGUAGE_SETUP_COMPLETED = window.__LUA_LANGUAGE_SETUP_COMPLETED || false;
+window.__MONACO_EDITOR_SETTINGS = window.__MONACO_EDITOR_SETTINGS || {
+  fontSize: 14,
+  tabSize: 2,
+  wordWrap: true,
+  minimap: false,
+  lineNumbers: true
+};
+
 export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwitching, scriptTabs }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const modelRef = useRef(null);
   const previousTabIdRef = useRef(null);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [editorSettings, setEditorSettings] = useState({
-    fontSize: 14,
-    tabSize: 2,
-    wordWrap: true,
-    minimap: false,
-    lineNumbers: true
-  });
+  const [editorSettings, setEditorSettings] = useState(window.__MONACO_EDITOR_SETTINGS);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [isCodeEmpty, setIsCodeEmpty] = useState(!code || code.trim() === '');
   const [isEditorLoading, setIsEditorLoading] = useState(true);
@@ -28,6 +31,75 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
   const modelCacheRef = useRef({});
   
   const isUpdatingRef = useRef(false);
+  const editorStateRestoredRef = useRef(false);
+  const [isEditorMounted, setIsEditorMounted] = useState(false);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (typeof window.electron !== 'undefined') {
+        try {
+          const result = await window.electron.invoke('load-settings');
+          if (result.success) {
+            const newSettings = {
+              fontSize: result.data.fontSize || 14,
+              tabSize: result.data.tabSize || 2,
+              wordWrap: result.data.wordWrap !== undefined ? result.data.wordWrap : true,
+              minimap: result.data.minimap !== undefined ? result.data.minimap : false,
+              lineNumbers: result.data.lineNumbers !== undefined ? result.data.lineNumbers : true
+            };
+            
+            setEditorSettings(newSettings);
+            window.__MONACO_EDITOR_SETTINGS = newSettings;
+            
+            setAutoSaveEnabled(result.data.autoSave !== undefined ? result.data.autoSave : true);
+            
+            if (editorRef.current && monacoRef.current) {
+              editorRef.current.updateOptions({
+                fontSize: newSettings.fontSize,
+                tabSize: newSettings.tabSize,
+                wordWrap: newSettings.wordWrap ? "on" : "off",
+                minimap: { enabled: newSettings.minimap },
+                lineNumbers: newSettings.lineNumbers ? "on" : "off"
+              });
+            }
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    };
+    
+    loadSettings();
+    
+    const handleSettingsChanged = (event) => {
+      if (event.detail && event.detail.settings) {
+        const newSettings = {
+          ...editorSettings,
+          ...event.detail.settings,
+        };
+        
+        setEditorSettings(newSettings);
+        window.__MONACO_EDITOR_SETTINGS = newSettings;
+        setAutoSaveEnabled(event.detail.settings.autoSave !== undefined ? event.detail.settings.autoSave : autoSaveEnabled);
+
+        if (editorRef.current && !editorRef.current.isDisposed?.()) {
+          editorRef.current.updateOptions({
+            fontSize: newSettings.fontSize,
+            tabSize: newSettings.tabSize,
+            wordWrap: newSettings.wordWrap ? "on" : "off",
+            minimap: { enabled: newSettings.minimap },
+            lineNumbers: newSettings.lineNumbers ? "on" : "off"
+          });
+        }
+      }
+    };
+    
+    window.addEventListener('settings-changed', handleSettingsChanged);
+    return () => {
+      window.removeEventListener('settings-changed', handleSettingsChanged);
+    };
+  }, []);
+
   useEffect(() => {
     if (tabId && previousTabIdRef.current && tabId !== previousTabIdRef.current) {
       
@@ -50,163 +122,8 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
   }, [tabId]);
 
   useEffect(() => {
-    if (!monacoRef.current || !scriptTabs) return;
-    
-    const preloadTabs = async () => {
-      const monaco = monacoRef.current;
-      if (!monaco || !scriptTabs || scriptTabs.length <= 1) return;
-      
-      const currentTabIndex = scriptTabs.findIndex(tab => tab.id === tabId);
-      if (currentTabIndex > -1) {
-        if (currentTabIndex < scriptTabs.length - 1) {
-          const nextTab = scriptTabs[currentTabIndex + 1];
-          if (nextTab && !modelCacheRef.current[nextTab.id]) {
-            const uri = monaco.Uri.parse(`inmemory://tab/${nextTab.id}.lua`);
-            if (!monaco.editor.getModel(uri)) {
-              const model = monaco.editor.createModel(nextTab.code || '', 'lua', uri);
-              modelCacheRef.current[nextTab.id] = model;
-            }
-          }
-        }
-        
-        if (currentTabIndex > 0) {
-          const prevTab = scriptTabs[currentTabIndex - 1];
-          if (prevTab && !modelCacheRef.current[prevTab.id]) {
-            const uri = monaco.Uri.parse(`inmemory://tab/${prevTab.id}.lua`);
-            if (!monaco.editor.getModel(uri)) {
-              const model = monaco.editor.createModel(prevTab.code || '', 'lua', uri);
-              modelCacheRef.current[prevTab.id] = model;
-            }
-          }
-        }
-      }
-    };
-    
-    const timer = setTimeout(preloadTabs, 100);
-    return () => clearTimeout(timer);
-  }, [tabId, scriptTabs]);
-
-  useEffect(() => {
-    if (!editorRef.current || !monacoRef.current || !tabId) return;
-    
-    const monaco = monacoRef.current;
-    const editor = editorRef.current;
-
-    requestAnimationFrame(() => {
-      try {
-        const uri = monaco.Uri.parse(`inmemory://tab/${tabId}.lua`);
-
-        let model = modelCacheRef.current[tabId];
-        
-        if (!model) {
-          model = monaco.editor.getModel(uri);
-          
-          if (!model) {
-            model = monaco.editor.createModel(code || '', 'lua', uri);
-            modelCacheRef.current[tabId] = model;
-          }
-        }
-        
-        if (!isTabSwitching && model.getValue() !== code) {
-          model.setValue(code || '');
-        }
-        if (editor.getModel() !== model) {
-          editor.setModel(model);
-        }
-        
-        modelRef.current = model;
-      } catch (error) {
-        console.error(error);
-      }
-    });
-  }, [tabId, code, isTabSwitching]);
-
-  useEffect(() => {
-    if (!editorRef.current || !tabId) return;
-    
-    if (isTabSwitching) {
-      if (document.activeElement && document.activeElement.blur) {
-        document.activeElement.blur();
-      }
-      
-      if (editorRef.current.getDomNode()) {
-        editorRef.current.getDomNode().classList.add('no-focus-indicator');
-      }
-    } else {
-      if (editorRef.current.getDomNode()) {
-        editorRef.current.getDomNode().classList.remove('no-focus-indicator');
-      }
-    }
-  }, [isTabSwitching, tabId]);
-
-  useEffect(() => {
-    if (!editorRef.current || !tabId) return;
-    
-    const editorDom = editorRef.current.getDomNode();
-    if (!editorDom) return;
-    
-    const editorParent = editorDom.closest('.monaco-editor-container');
-    
-    if (isTabSwitching) {
-      if (document.activeElement && document.activeElement.blur) {
-        document.activeElement.blur();
-      }
-      
-      if (editorParent) {
-        editorParent.classList.add('suppress-borders');
-      }
-      
-      const allBorders = editorDom.querySelectorAll('.monaco-editor, .overflow-guard, .editor-scrollable');
-      allBorders.forEach(el => {
-        el.style.border = 'none';
-        el.style.outline = 'none';
-        el.style.transition = 'none';
-      });
-    } else {
-      if (editorParent) {
-        editorParent.classList.remove('suppress-borders');
-      }
-    }
-  }, [isTabSwitching, tabId]);
-
-  useEffect(() => {
     setIsCodeEmpty(!code || code.trim() === '');
   }, [code]);
-
-  useEffect(() => {
-    const loadSettings = async () => {
-      if (typeof window.electron !== 'undefined') {
-        try {
-          const result = await window.electron.invoke('load-settings');
-          if (result.success) {
-            setEditorSettings({
-              fontSize: result.data.fontSize || 14,
-              tabSize: result.data.tabSize || 2,
-              wordWrap: result.data.wordWrap !== undefined ? result.data.wordWrap : true,
-              minimap: result.data.minimap || false,
-              lineNumbers: result.data.lineNumbers !== undefined ? result.data.lineNumbers : true
-            });
-            setAutoSaveEnabled(result.data.autoSave !== undefined ? result.data.autoSave : true);
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      }
-    };
-    
-    loadSettings();
-    
-    const handleSettingsChanged = (event) => {
-      if (event.detail && event.detail.settings) {
-        setAutoSaveEnabled(event.detail.settings.autoSave);
-      }
-    };
-    
-    window.addEventListener('settings-changed', handleSettingsChanged);
-    return () => {
-      window.removeEventListener('settings-changed', handleSettingsChanged);
-    };
-  }, []);
 
   let handleThemeChangeRef = null;
 
@@ -216,12 +133,17 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
     window.editor = editor;
     
     setIsEditorLoading(false);
+    setIsEditorMounted(true);
+    editorStateRestoredRef.current = true;
     
     if (editor.getDomNode()) {
       editor.getDomNode().classList.add('monaco-custom-editor');
     }
     
-    setupLuaLanguage(monaco);
+    if (!window.__LUA_LANGUAGE_SETUP_COMPLETED) {
+      setupLuaLanguage(monaco);
+      window.__LUA_LANGUAGE_SETUP_COMPLETED = true;
+    }
     
     const uri = monaco.Uri.parse(`inmemory://tab/${tabId}.lua`);
     let model = monaco.editor.getModel(uri);
@@ -240,6 +162,41 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
     previousTabIdRef.current = tabId;
     window.dispatchEvent(new CustomEvent('monaco-ready'));
     window.monaco = monaco; 
+    
+    editor.updateOptions({
+      fontSize: editorSettings.fontSize,
+      tabSize: editorSettings.tabSize,
+      wordWrap: editorSettings.wordWrap ? "on" : "off",
+      minimap: { enabled: editorSettings.minimap },
+      lineNumbers: editorSettings.lineNumbers ? "on" : "off",
+      scrollBeyondLastLine: false,
+      fontFamily: "JetBrains Mono, monospace",
+      smoothScrolling: true,
+      contextmenu: false,
+      cursorBlinking: "phase",
+      cursorSmoothCaretAnimation: true,
+      formatOnPaste: false,
+      padding: { top: 8, bottom: 8 },
+      quickSuggestions: true,
+      suggestOnTriggerCharacters: true,
+      parameterHints: { enabled: true },
+      folding: false,
+      snippetSuggestions: 'inline',
+      suggest: {
+        showMethods: true,
+        showFunctions: true,
+        showClasses: true, 
+        showVariables: true,
+        showWords: true,
+        showProperties: true
+      },
+      scrollbar: {
+        horizontal: 'hidden',
+        useShadows: false,
+        verticalScrollbarSize: 6,
+      },
+    });
+    
     handleThemeChangeRef = (event) => {
       if (event.detail && event.detail.settings) {
         const isPink = event.detail.settings.pinkTheme;
@@ -339,200 +296,39 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
     }
   };
 
-
   useEffect(() => {
     return () => {
+      if (editorRef.current && typeof editorRef.current.dispose === 'function') {
+        try {
+          editorRef.current.dispose();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      if (monacoRef.current) {
+        try {
+          Object.values(modelCacheRef.current).forEach(model => {
+            if (model && typeof model.dispose === 'function') {
+              model.dispose();
+            }
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
       window.removeEventListener('execute-script', handleExecute);
       window.removeEventListener('clear-editor', () => {});
       window.removeEventListener('execute-tool', handleToolExecution);
+      
       if (handleThemeChangeRef) {
         window.removeEventListener('settings-changed', handleThemeChangeRef);
       }
+      
+      setIsEditorMounted(false);
     };
   }, []);
-
-  useEffect(() => {
-    return () => {
-      if (monacoRef.current) {
-        Object.values(modelCacheRef.current).forEach(model => {
-          try {
-            if (model) model.dispose();
-          } catch (e) {
-            console.error(e);
-          }
-        });
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isTabSwitching) {
-      isUpdatingRef.current = true;
-      requestAnimationFrame(() => {
-        const container = document.querySelector('.monaco-editor-container');
-        if (container) {
-          container.classList.add('monaco-editor-hidden');
-          if (editorRef.current) {
-            editorRef.current.updateOptions({ readOnly: true });
-          }
-        }
-      });
-    } else {
-      setTimeout(() => {
-        const container = document.querySelector('.monaco-editor-container');
-        if (container) {
-          container.classList.remove('monaco-editor-hidden');
-          setTimeout(() => {
-            if (editorRef.current) {
-              editorRef.current.updateOptions({ readOnly: false });
-            }
-            isUpdatingRef.current = false;
-          }, 50);
-        }
-      }, 20);
-    }
-  }, [isTabSwitching]);
-
-  useEffect(() => {
-    if (!editorRef.current || !monacoRef.current || !tabId || isUpdatingRef.current) {
-      return;
-    }
-    
-    const monaco = monacoRef.current;
-    const editor = editorRef.current;
-    
-    Promise.resolve().then(() => {
-      try {
-        const uri = monaco.Uri.parse(`inmemory://tab/${tabId}.lua`);
-        
-        let model = monaco.editor.getModel(uri) || monaco.editor.createModel(code || '', 'lua', uri);
-
-        modelCacheRef.current[tabId] = model;
-        
-        if (!isTabSwitching && model.getValue() !== code) {
-          model.setValue(code || '');
-        }
-        
-        requestAnimationFrame(() => {
-          if (editor && model && !editor.isDisposed() && !model.isDisposed()) {
-            if (editor.getModel() !== model) {
-              editor.setModel(model);
-            }
-            modelRef.current = model;
-          }
-        });
-      } catch (error) {
-        console.error(error);
-      }
-    });
-  }, [tabId, code, isTabSwitching]);
-
-  useEffect(() => {
-    if (isTabSwitching) {
-      isUpdatingRef.current = true;
-
-      requestAnimationFrame(() => {
-        const container = document.querySelector('.monaco-editor-container');
-        if (container) {
-          container.classList.add('monaco-editor-hidden');
-        }
-        
-        if (editorRef.current) {
-          editorRef.current.updateOptions({ readOnly: true });
-        }
-      });
-    } else {
-      setTimeout(() => {
-        const container = document.querySelector('.monaco-editor-container');
-        if (container) {
-          container.classList.remove('monaco-editor-hidden');
-        }
-        
-        if (editorRef.current) {
-          editorRef.current.updateOptions({ readOnly: false });
-        }
-        
-        isUpdatingRef.current = false;
-      }, 30);
-    }
-  }, [isTabSwitching]);
-
-  useEffect(() => {
-    if (!editorRef.current || !monacoRef.current || !tabId || isUpdatingRef.current) {
-      return;
-    }
-    
-    const monaco = monacoRef.current;
-    const editor = editorRef.current;
-    
-    Promise.resolve().then(() => {
-      try {
-        const uri = monaco.Uri.parse(`inmemory://tab/${tabId}.lua`);
-        let model = modelCacheRef.current[tabId] || monaco.editor.getModel(uri);
-        
-        if (!model) {
-          model = monaco.editor.createModel(code || '', 'lua', uri);
-          modelCacheRef.current[tabId] = model;
-        } else if (!isTabSwitching && model.getValue() !== code) {
-          model.setValue(code || '');
-        }
-        
-        if (editor.getModel() !== model) {
-          editor.setModel(model);
-        }
-        
-        modelRef.current = model;
-      } catch (error) {
-        console.error("Error updating Monaco model:", error);
-      }
-    });
-  }, [tabId, code, isTabSwitching]);
-
-  useEffect(() => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-    
-    if (isTabSwitching) {
-      setIsEditorLoading(true);
-    } else {
-      loadingTimeoutRef.current = setTimeout(() => {
-        setIsEditorLoading(false);
-      }, 100);
-    }
-    
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [isTabSwitching]);
-
-  useEffect(() => {
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isTabSwitching) {
-      const container = document.querySelector('.monaco-editor-container');
-      if (container) {
-        container.style.transition = 'none';
-        container.style.opacity = '0.95';
-      }
-    } else {
-      requestAnimationFrame(() => {
-        const container = document.querySelector('.monaco-editor-container');
-        if (container) {
-          container.style.transition = 'opacity 0.15s ease-out';
-          container.style.opacity = '1';
-        }
-      });
-    }
-  }, [isTabSwitching]);
 
   const handleExecute = async () => {
     if (isCodeEmpty) return;
@@ -558,7 +354,13 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
             theme="vs-dark"
             options={{
               fontSize: editorSettings.fontSize,
-              minimap: { enabled: editorSettings.minimap },
+              minimap: { 
+                enabled: editorSettings.minimap,
+                side: 'right',
+                showSlider: 'mouseover',
+                renderCharacters: false,
+                maxColumn: 120
+              },
               scrollBeyondLastLine: false,
               fontFamily: "JetBrains Mono, monospace",
               smoothScrolling: true, 
@@ -590,6 +392,7 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
               },
             }}
             className="font-mono select-text cursor-text"
+            key={`monaco-editor-${isEditorMounted ? 'mounted' : 'unmounted'}`}
           />
         </div>
       </div>
@@ -783,6 +586,40 @@ export default function MonacoEditor({ code, setCode, onExecute, tabId, isTabSwi
         body.pink-theme .monaco-editor .deprecated {
           color: #FF1493 !important;
           text-decoration-color: #FF1493 !important;
+        }
+        .monaco-editor .mtk1.deprecated,
+        .monaco-editor .deprecated {
+          color: #FF5252 !important;
+          text-decoration: underline wavy #FF5252 !important;
+          text-decoration-thickness: 1px !important;
+          font-style: italic !important;
+          font-weight: bold !important;
+        }
+        .monaco-editor [class*="mtk"].deprecated {
+          color: #FF5252 !important;
+          text-decoration: underline wavy #FF5252 !important;
+          text-decoration-thickness: 1px !important;
+          font-style: italic !important;
+          font-weight: bold !important;
+        }
+        .monaco-editor .suggest-widget .monaco-list .monaco-list-row .monaco-highlighted-label .deprecated {
+          color: #FF5252 !important;
+          font-style: italic !important;
+          text-decoration: underline wavy #FF5252 !important;
+          font-weight: bold !important;
+        }
+        body.pink-theme .monaco-editor .deprecated,
+        body.pink-theme .monaco-editor .mtk1.deprecated,
+        body.pink-theme .monaco-editor [class*="mtk"].deprecated {
+          color: #FF1493 !important;
+          text-decoration-color: #FF1493 !important;
+        }
+        .monaco-editor-hover .hover-contents .deprecated,
+        .monaco-editor .parameter-hints-widget .deprecated {
+          color: #FF5252 !important;
+          text-decoration: underline wavy #FF5252 !important;
+          font-style: italic !important;
+          font-weight: bold !important;
         }
       `}</style>
     </div>

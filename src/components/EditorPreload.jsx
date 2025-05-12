@@ -8,6 +8,38 @@ export default function EditorPreload() {
   useEffect(() => {
     setIsElectron(window.electron !== undefined);
 
+    if (typeof window !== 'undefined') {
+      window.__LUA_LANGUAGE_SETUP_COMPLETED = false;
+      
+      if (!window.__MONACO_EDITOR_SETTINGS) {
+        window.__MONACO_EDITOR_SETTINGS = {
+          fontSize: 14,
+          tabSize: 2,
+          wordWrap: true,
+          minimap: false,
+          lineNumbers: true
+        };
+      }
+      
+      const oldStyle = document.getElementById('monaco-deprecated-styles');
+      if (oldStyle) {
+        oldStyle.remove();
+      }
+      
+      const styleEl = document.createElement('style');
+      styleEl.id = 'monaco-deprecated-styles';
+      styleEl.innerHTML = `
+        .monaco-editor .mtk1.deprecated,
+        .monaco-editor .deprecated {
+          color: #FF5252 !important;
+          text-decoration: underline wavy #FF5252 !important;
+          font-style: italic !important;
+          font-weight: bold !important;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
     const preloadTabs = async () => {
       if (window.electron) {
         try {
@@ -55,9 +87,29 @@ export default function EditorPreload() {
       }
     };
     
+    const loadEditorSettings = async () => {
+      if (window.electron) {
+        try {
+          const result = await window.electron.invoke('load-settings');
+          if (result.success) {
+            window.__MONACO_EDITOR_SETTINGS = {
+              fontSize: result.data.fontSize || 14,
+              tabSize: result.data.tabSize || 2,
+              wordWrap: result.data.wordWrap !== undefined ? result.data.wordWrap : true,
+              minimap: result.data.minimap !== undefined ? result.data.minimap : false,
+              lineNumbers: result.data.lineNumbers !== undefined ? result.data.lineNumbers : true
+            };
+          }
+        } catch (err) {
+          console.warn(err);
+        }
+      }
+    };
+    
     const criticalPreload = async () => {
       await Promise.all([
         preloadTabs(),
+        loadEditorSettings(),
         window.electron?.invoke('warm-up-monaco')
       ]).catch(err => {
         console.warn(err);
@@ -94,6 +146,11 @@ export default function EditorPreload() {
     
     return () => {
       window.removeEventListener('monaco-ready', () => {});
+      
+      const styleEl = document.getElementById('monaco-deprecated-styles');
+      if (styleEl) {
+        styleEl.remove();
+      }
     };
   }, []);
   

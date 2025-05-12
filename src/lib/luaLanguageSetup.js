@@ -1,3 +1,457 @@
+export function setupLuaLanguage(monaco) {
+  if (monaco.__luaSetupComplete) {
+    return;
+  }
+  
+  const allCompletions = [
+    ...executorFunctions,
+    ...robloxApis,
+  ];
+
+  if (!monaco.languages.getLanguages().some(lang => lang.id === 'lua')) {
+    monaco.languages.register({ id: 'lua' });
+  }
+
+  monaco.languages.setMonarchTokensProvider('lua', {
+    defaultToken: 'invalid',
+    keywords: [
+      'and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for', 'function', 
+      'if', 'in', 'local', 'nil', 'not', 'or', 'repeat', 'return', 'then', 'true', 
+      'until', 'while'
+    ],
+    builtins: [
+      'print', 'error', 'warn', 'assert', 'pcall', 'xpcall', 'select',
+      'tonumber', 'tostring', 'type', 'unpack', '_G', 'getfenv', 'setfenv',
+      'next', 'pairs', 'ipairs', 'rawequal', 'rawset', 'rawget', 'collectgarbage',
+      'getmetatable', 'setmetatable', 'require', 'loadstring', 'dofile', 'typeof',
+      'string.byte', 'string.char', 'string.dump', 'string.find', 'string.format',
+      'string.gsub', 'string.len', 'string.lower', 'string.match', 'string.rep',
+      'string.reverse', 'string.sub', 'string.upper',
+      'table.concat', 'table.insert', 'table.maxn', 'table.remove', 'table.sort',
+      'table.create', 'table.find', 'table.move', 'table.foreach',
+      'math.abs', 'math.acos', 'math.asin', 'math.atan', 'math.atan2', 'math.ceil',
+      'math.cos', 'math.cosh', 'math.deg', 'math.exp', 'math.floor', 'math.fmod',
+      'math.frexp', 'math.huge', 'math.ldexp', 'math.log', 'math.log10', 'math.max', 
+      'math.min', 'math.modf', 'math.pi', 'math.pow', 'math.rad', 'math.random',
+      'math.randomseed', 'math.sin', 'math.sinh', 'math.sqrt', 'math.tan', 'math.tanh',
+      'io.close', 'io.flush', 'io.input', 'io.lines', 'io.open', 'io.output',
+      'io.popen', 'io.read', 'io.tmpfile', 'io.type', 'io.write',
+      'os.clock', 'os.date', 'os.difftime', 'os.execute', 'os.exit', 'os.getenv',
+      'os.remove', 'os.rename', 'os.setlocale', 'os.time', 'os.tmpname'
+    ],
+    robloxGlobals: [
+      '_G', 
+      'game', 'workspace', 'script', 'math', 'string', 'table', 'task', 'wait',
+      'delay', 'spawn', 'tick', 'Vector2', 'Vector3', 'CFrame', 'Color3',
+      'Enum', 'Instance', 'Ray', 'Region3', 'UDim', 'UDim2', 'Rect', 'BrickColor',
+      'TweenInfo', 'NumberSequence', 'ColorSequence', 'NumberRange', 'Path'
+    ],
+    executorFunctions: [
+      'getgenv', 'getrenv', 'getrawmetatable', 'setrawmetatable', 'hookfunction',
+      'hookmetamethod', 'islclosure', 'iscclosure', 'newcclosure', 'checkcaller',
+      'getupvalue', 'setupvalue', 'getupvalues', 'getconstants', 'setconstant',
+      'getnamecallmethod', 'setnamecallmethod', 'isexecutorclosure', 'identifyexecutor',
+      'setreadonly', 'getscripts', 'loadstring', 'firesignal', 'gethui', 'hookamethod',
+      'fireclickdetector', 'fireproximityprompt', 'firetouchinterest', 'fireremote',
+      'readfile', 'writefile', 'appendfile', 'loadfile', 'listfiles', 'isfile', 'isfolder',
+      'makefolder', 'delfolder', 'delfile',
+      'debug.getregistry', 'debug.getupvalues', 'debug.getmetatable', 'debug.setmetatable',
+      'debug.getconstants', 'debug.setconstant', 'debug.getupvalue', 'debug.setupvalue',
+      'debug.getprotos', 'debug.getinfo', 'debug.traceback',
+      'Drawing.new', 'Drawing.Clear', 'Drawing.isDrawing'
+    ],   
+    deprecatedFunctions: [
+      'fluxus', 'fluxus.request', 'fluxus.set_thread_identity', 'fluxus.queue_on_teleport'
+    ],
+    constants: [
+      'nil', 'true', 'false', 'self'
+    ],
+    operators: [
+      '=', '~=', '==', '>', '>=', '<', '<=', '+', '-', '*', '/', '%', '^', '#',
+      '..', '.', ':', '+'
+    ],
+    symbols: /[=><!~?:&|+\-*\/\^%#\.]+/,
+    escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
+    tokenizer: {
+      root: [
+        [/(fluxus)(\.)([a-zA-Z_]\w*)/, ['deprecated', 'delimiter', 'deprecated']], 
+        [/\b(fluxus)\b/, 'deprecated'],
+        [/[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*/, {
+          cases: {
+            '@deprecatedFunctions': 'deprecated',
+            '@constants': 'constant',
+            '@keywords': 'keyword',
+            '@builtins': 'predefined',
+            '@robloxGlobals': 'roblox',
+            '@executorFunctions': 'executor',
+            '@default': 'identifier'
+          }
+        }],
+        { include: '@whitespace' },
+        [/[{}()\[\]]/, '@brackets'],
+        [/@symbols/, {
+          cases: {
+            '@operators': 'operator',
+            '@default': ''
+          }
+        }],
+        [/0[xX][0-9a-fA-F_]+/, 'number.hex'],
+        [/0[bB][01_]+/, 'number.binary'],
+        [/\d+[eE][\-+]?\d+/, 'number.float'],
+        [/\d*\.\d+([eE][\-+]?\d+)?/, 'number.float'],
+        [/\d+[lL]?/, 'number'],
+        [/"([^"\\]|\\.)*$/, 'string.invalid'],
+        [/'([^'\\]|\\.)*$/, 'string.invalid'],
+        [/"/, 'string', '@string_double'],
+        [/'/, 'string', '@string_single'],
+        [/\[(=*)\[/, { token: 'delimiter.longstring.start', next: '@longstring.$1' }],
+      ],
+      whitespace: [
+        [/[ \t\r\n]+/, 'white'],
+        [/--\[(=*)\[/, { token: 'comment.longcomment', next: '@longcomment.$1' }],
+        [/--.*$/, 'comment'],
+      ],
+      longstring: [
+        [/\](=*)\]/, {
+          cases: {
+            '$1==$S2': { token: 'delimiter.longstring.end', next: '@pop' },
+            '@default': 'string'
+          }
+        }],
+        [/./, 'string']
+      ],
+      longcomment: [
+        [/\](=*)\]/, {
+          cases: {
+            '$1==$S2': { token: 'comment.longcomment', next: '@pop' },
+            '@default': 'comment'
+          }
+        }],
+        [/./, 'comment']
+      ],
+      string_double: [
+        [/\\./, 'string.escape'],
+        [/"/, 'string', '@pop'],
+        [/[^\\"]+/, 'string'],
+      ],
+      string_single: [
+        [/\\./, 'string.escape'],
+        [/'/, 'string', '@pop'],
+        [/[^\\']+/, 'string'],
+      ]
+    }
+  });
+  monaco.languages.setLanguageConfiguration('lua', {
+    comments: {
+      lineComment: '--',
+      blockComment: ['--[[', ']]']
+    },
+    brackets: [
+      ['{', '}'],
+      ['[', ']'],
+      ['(', ')']
+    ],
+    autoClosingPairs: [
+      { open: '{', close: '}' },
+      { open: '[', close: ']' },
+      { open: '(', close: ')' },
+      { open: '"', close: '"' },
+      { open: "'", close: "'" }
+    ],
+    surroundingPairs: [
+      { open: '{', close: '}' },
+      { open: '[', close: ']' },
+      { open: '(', close: ')' },
+      { open: '"', close: '"' },
+      { open: "'", close: "'" }
+    ],
+    indentationRules: {
+      increaseIndentPattern: /^\s*(function|then|do|repeat|else|elseif|local\s+function|if)\s*$/,
+      decreaseIndentPattern: /^\s*(end|until)\s*$/
+    },
+    folding: {
+      markers: {
+        start: new RegExp('^\\s*--\\s*#?region\\b'),
+        end: new RegExp('^\\s*--\\s*#?endregion\\b')
+      }
+    },
+    onEnterRules: []
+  });
+
+  const luaKeywords = [
+    { label: 'if', insertText: 'if ${1:condition} then\n\t${2:-- code}\nend', kind: 17 /* Keyword */ },
+    { label: 'for', insertText: 'for ${1:i} = ${2:1}, ${3:10}, ${4:1} do\n\t${5:-- code}\nend', kind: 17 },
+    { label: 'while', insertText: 'while ${1:condition} do\n\t${2:-- code}\nend', kind: 17 },
+    { label: 'repeat', insertText: 'repeat\n\t${1:-- code}\nuntil ${2:condition}', kind: 17 },
+    { label: 'function', insertText: 'function ${1:name}(${2:params})\n\t${3:-- code}\nend', kind: 17 },
+    { label: 'local', insertText: 'local ${1:name} = ${2:value}', kind: 17 },
+    { label: 'local function', insertText: 'local function ${1:name}(${2:params})\n\t${3:-- code}\nend', kind: 17 },
+    { label: 'return', insertText: 'return ${1:value}', kind: 17 },
+    { label: 'elseif', insertText: 'elseif ${1:condition} then\n\t${2:-- code}', kind: 17 },
+    { label: 'else', insertText: 'else\n\t${1:-- code}', kind: 17 },
+    { label: 'and', insertText: 'and ', kind: 17 },
+    { label: 'or', insertText: 'or ', kind: 17 },
+    { label: 'not', insertText: 'not ', kind: 17 },
+    { label: 'nil', insertText: 'nil', kind: 17 },
+    { label: 'true', insertText: 'true', kind: 17 },
+    { label: 'false', insertText: 'false', kind: 17 },
+    { label: 'self', insertText: 'self', kind: 17 },
+  ];
+
+  allCompletions.push(...luaKeywords);
+
+  monaco.languages.registerCompletionItemProvider('lua', {
+    triggerCharacters: ['.', ':', '_'],
+    provideCompletionItems: (model, position) => {
+      const word = model.getWordUntilPosition(position);
+      const lineUntilPosition = model.getValueInRange({
+        startLineNumber: position.lineNumber,
+        startColumn: 1,
+        endLineNumber: position.lineNumber,
+        endColumn: position.column
+      });
+      
+      const range = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn
+      };
+      
+      const lastChar = lineUntilPosition.trim().slice(-1);
+      
+      const createSuggestion = (item) => {
+        const itemKind = item.kind || 1; 
+        const isMethod = itemKind === 2;
+        const isKeyword = itemKind === 17;
+        
+        let iconClasses = '';
+        if (isMethod) {
+          iconClasses = 'method-icon'; 
+        } else if (isKeyword) {
+          iconClasses = 'keyword-icon'; 
+        } else {
+          iconClasses = 'function-icon';
+        }
+
+        const styleElement = document.getElementById('monaco-suggestion-styles');
+        if (!styleElement) {
+          const newStyleElement = document.createElement('style');
+          newStyleElement.id = 'monaco-suggestion-styles';
+          newStyleElement.innerHTML = `
+            .function-icon:before { content: 'ƒ'; color: #569CD6; font-weight: bold; }
+            .method-icon:before { content: 'M'; color: #4EC9B0; font-weight: bold; }
+            .keyword-icon:before { content: 'K'; color: #C586C0; font-weight: bold; }
+          `;
+          document.head.appendChild(newStyleElement);
+        }
+        
+        return {
+          label: item.label,
+          kind: isMethod 
+            ? monaco.languages.CompletionItemKind.Method 
+            : isKeyword 
+              ? monaco.languages.CompletionItemKind.Keyword 
+              : monaco.languages.CompletionItemKind.Function,
+          documentation: {
+            value: item.documentation || ''
+          },
+          detail: item.detail || '',
+          insertText: item.insertText || item.label,
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          range: range,
+          sortText: isMethod ? '2' : isKeyword ? '3' : '1', 
+          filterText: item.label,
+          command: { id: 'editor.action.triggerSuggest' }
+        };
+      };
+      
+      if (lastChar === ':') {
+        return {
+          suggestions: allCompletions
+            .filter(item => item.kind === 2) 
+            .map(item => {
+              const label = item.label.includes(':') ? item.label.split(':')[1] : item.label;
+              const insertText = item.insertText.startsWith(':') ? item.insertText : `:${item.insertText}`;
+              
+              return createSuggestion({
+                ...item,
+                label,
+                insertText,
+                kind: 2
+              });
+            })
+        };
+      } else if (lastChar === '.') {
+        return {
+          suggestions: allCompletions
+            .filter(item => item.label.includes('.'))
+            .map(item => {
+              const label = item.label.split('.').pop();
+              const insertText = item.insertText.includes('.') 
+                ? item.insertText.split('.').pop() 
+                : item.insertText;
+              
+              return createSuggestion({
+                ...item,
+                label,
+                insertText,
+                kind: 1 
+              });
+            })
+        };
+      }
+      
+      return {
+        suggestions: allCompletions.map(item => createSuggestion(item))
+      };
+    }
+  });
+
+  monaco.languages.registerHoverProvider('lua', {
+    provideHover: (model, position) => {
+      const word = model.getWordAtPosition(position);
+      if (!word) return null;
+
+      const match = allCompletions.find(item => 
+        item.label === word.word || 
+        item.label.includes(`.${word.word}`) || 
+        item.label.includes(`:${word.word}`)
+      );
+
+      if (match) {
+        return {
+          contents: [
+            { value: '```lua\n' + match.detail + '\n```' },
+            { value: match.documentation }
+          ]
+        };
+      }
+      return null;
+    }
+  });
+
+  monaco.editor.defineTheme('lua-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'keyword', foreground: 'C586C0', fontStyle: 'bold' },
+      { token: 'predefined', foreground: '569CD6' },
+      { token: 'roblox', foreground: '4EC9B0' },       
+      { token: 'executor', foreground: '4FC1FF' },     
+      { token: 'constant', foreground: '569CD6', fontStyle: 'bold' }, 
+      { token: 'identifier', foreground: 'D4D4D4' },  
+      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+      { token: 'string', foreground: 'CE9178' },       
+      { token: 'string.escape', foreground: 'D7BA7D' }, 
+      { token: 'number', foreground: 'B5CEA8' },       
+      { token: 'number.hex', foreground: 'B5CEA8' },  
+      { token: 'number.binary', foreground: 'B5CEA8' }, 
+      { token: 'number.float', foreground: 'B5CEA8' }, 
+      { token: 'operator', foreground: 'D4D4D4' },     
+      { token: 'delimiter', foreground: 'D4D4D4' },  
+      { 
+        token: 'deprecated', 
+        foreground: 'FF5252', 
+        fontStyle: 'italic bold underline'
+      }, 
+      { token: '', foreground: 'D4D4D4' }
+    ],
+    colors: {
+      'editor.foreground': '#D4D4D4',  
+      'editor.background': '#121212',
+      'editor.selectionBackground': '#264F78',
+      'editor.lineHighlightBackground': '#2A2A2A',
+      'editorCursor.foreground': '#FFFFFF',
+      'editorWhitespace.foreground': '#404040',
+      'editorLineNumber.foreground': '#858585',
+      'editorSuggestWidget.background': '#252526',
+      'editorSuggestWidget.foreground': '#D4D4D4',
+      'editorSuggestWidget.selectedBackground': '#062F4A'
+    }
+  });
+
+  monaco.editor.setTheme('lua-dark');
+
+  monaco.languages.registerDocumentSemanticTokensProvider('lua', {
+    getLegend: () => ({
+      tokenTypes: ['variable', 'function'],
+      tokenModifiers: ['declaration', 'usage']
+    }),
+    provideDocumentSemanticTokens: (model) => {
+      const lines = model.getLinesContent();
+      const tokens = [];
+      const localDeclarations = new Map();
+      const functionDeclarations = new Set();
+      
+      lines.forEach((line, lineIndex) => {
+        const localMatches = line.matchAll(/\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=/g);
+        for (const match of localMatches) {
+          localDeclarations.set(match[1], true);
+        }
+        
+        const functionMatches = line.matchAll(/\b(?:local\s+)?function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g);
+        for (const match of functionMatches) {
+          functionDeclarations.add(match[1]);
+        }
+      });
+
+      lines.forEach((line, lineIndex) => {
+        const variableMatches = line.matchAll(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*[=\(])/g);
+        for (const match of variableMatches) {
+          const varName = match[1];
+          if (!localDeclarations.has(varName) && 
+              !functionDeclarations.has(varName) && 
+              !robloxApis.some(api => api.label === varName) &&
+              !executorFunctions.some(func => func.label === varName) &&
+              !['print', 'warn', 'error', '_G', 'game', 'workspace', 'script'].includes(varName)) {
+            
+            monaco.editor.setModelMarkers(model, 'lua', [{
+              message: `Variable '${varName}' is not defined`,
+              severity: monaco.MarkerSeverity.Warning,
+              startLineNumber: lineIndex + 1,
+              startColumn: match.index + 1,
+              endLineNumber: lineIndex + 1,
+              endColumn: match.index + match[0].length + 1
+            }]);
+          }
+        }
+        
+        const functionMatches = line.matchAll(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g);
+        for (const match of functionMatches) {
+          const funcName = match[1];
+          if (!functionDeclarations.has(funcName) && 
+              !robloxApis.some(api => api.label === funcName) &&
+              !executorFunctions.some(func => func.label === funcName)) {
+            
+            monaco.editor.setModelMarkers(model, 'lua', [{
+              message: `Function '${funcName}' is not defined`,
+              severity: monaco.MarkerSeverity.Warning,
+              startLineNumber: lineIndex + 1,
+              startColumn: match.index + 1,
+              endLineNumber: lineIndex + 1,
+              endColumn: match.index + match[0].length + 1
+            }]);
+          }
+        }
+      });
+
+      return { data: new Uint32Array(tokens) };
+    },
+    releaseDocumentSemanticTokens: () => {}
+  });
+
+  monaco.editor.onDidCreateModel(model => {
+    if (model.getLanguageId() === 'lua') {
+      model.onDidChangeContent(() => {
+        monaco.languages.semanticTokens.refresh();
+      });
+    }
+  });
+  
+  monaco.__luaSetupComplete = true;
+}
+
 export const executorFunctions = [
   {
     label: 'getgenv',
@@ -701,452 +1155,5 @@ export const robloxApis = [
     insertText: 'mousemoveabs(${1:x}, ${2:y})',
   }
 ];
-
-export function setupLuaLanguage(monaco) {
-  const allCompletions = [
-    ...executorFunctions,
-    ...robloxApis,
-  ];
-
-  if (!monaco.languages.getLanguages().some(lang => lang.id === 'lua')) {
-    monaco.languages.register({ id: 'lua' });
-  }
-
-  monaco.languages.setMonarchTokensProvider('lua', {
-    defaultToken: 'invalid',
-    keywords: [
-      'and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for', 'function', 
-      'if', 'in', 'local', 'nil', 'not', 'or', 'repeat', 'return', 'then', 'true', 
-      'until', 'while'
-    ],
-    builtins: [
-      'print', 'error', 'warn', 'assert', 'pcall', 'xpcall', 'select',
-      'tonumber', 'tostring', 'type', 'unpack', '_G', 'getfenv', 'setfenv',
-      'next', 'pairs', 'ipairs', 'rawequal', 'rawset', 'rawget', 'collectgarbage',
-      'getmetatable', 'setmetatable', 'require', 'loadstring', 'dofile', 'typeof',
-      'string.byte', 'string.char', 'string.dump', 'string.find', 'string.format',
-      'string.gsub', 'string.len', 'string.lower', 'string.match', 'string.rep',
-      'string.reverse', 'string.sub', 'string.upper',
-      'table.concat', 'table.insert', 'table.maxn', 'table.remove', 'table.sort',
-      'table.create', 'table.find', 'table.move', 'table.foreach',
-      'math.abs', 'math.acos', 'math.asin', 'math.atan', 'math.atan2', 'math.ceil',
-      'math.cos', 'math.cosh', 'math.deg', 'math.exp', 'math.floor', 'math.fmod',
-      'math.frexp', 'math.huge', 'math.ldexp', 'math.log', 'math.log10', 'math.max', 
-      'math.min', 'math.modf', 'math.pi', 'math.pow', 'math.rad', 'math.random',
-      'math.randomseed', 'math.sin', 'math.sinh', 'math.sqrt', 'math.tan', 'math.tanh',
-      'io.close', 'io.flush', 'io.input', 'io.lines', 'io.open', 'io.output',
-      'io.popen', 'io.read', 'io.tmpfile', 'io.type', 'io.write',
-      'os.clock', 'os.date', 'os.difftime', 'os.execute', 'os.exit', 'os.getenv',
-      'os.remove', 'os.rename', 'os.setlocale', 'os.time', 'os.tmpname'
-    ],
-    robloxGlobals: [
-      '_G', 
-      'game', 'workspace', 'script', 'math', 'string', 'table', 'task', 'wait',
-      'delay', 'spawn', 'tick', 'Vector2', 'Vector3', 'CFrame', 'Color3',
-      'Enum', 'Instance', 'Ray', 'Region3', 'UDim', 'UDim2', 'Rect', 'BrickColor',
-      'TweenInfo', 'NumberSequence', 'ColorSequence', 'NumberRange', 'Path'
-    ],
-    executorFunctions: [
-      'getgenv', 'getrenv', 'getrawmetatable', 'setrawmetatable', 'hookfunction',
-      'hookmetamethod', 'islclosure', 'iscclosure', 'newcclosure', 'checkcaller',
-      'getupvalue', 'setupvalue', 'getupvalues', 'getconstants', 'setconstant',
-      'getnamecallmethod', 'setnamecallmethod', 'isexecutorclosure', 'identifyexecutor',
-      'setreadonly', 'getscripts', 'loadstring', 'firesignal', 'gethui', 'hookamethod',
-      'fireclickdetector', 'fireproximityprompt', 'firetouchinterest', 'fireremote',
-      'readfile', 'writefile', 'appendfile', 'loadfile', 'listfiles', 'isfile', 'isfolder',
-      'makefolder', 'delfolder', 'delfile',
-      'debug.getregistry', 'debug.getupvalues', 'debug.getmetatable', 'debug.setmetatable',
-      'debug.getconstants', 'debug.setconstant', 'debug.getupvalue', 'debug.setupvalue',
-      'debug.getprotos', 'debug.getinfo', 'debug.traceback',
-      'Drawing.new', 'Drawing.Clear', 'Drawing.isDrawing'
-    ],   
-    deprecatedFunctions: [
-      'fluxus', 'fluxus.request', 'fluxus.set_thread_identity', 'fluxus.queue_on_teleport'
-    ],
-    constants: [
-      'nil', 'true', 'false', 'self'
-    ],
-    operators: [
-      '=', '~=', '==', '>', '>=', '<', '<=', '+', '-', '*', '/', '%', '^', '#',
-      '..', '.', ':', '+'
-    ],
-    symbols: /[=><!~?:&|+\-*\/\^%#\.]+/,
-    escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
-    tokenizer: {
-      root: [
-        [/(fluxus)(\.)([a-zA-Z_]\w*)/, ['deprecated', 'delimiter', 'deprecated']], 
-        [/[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*/, {
-          cases: {
-            '@deprecatedFunctions': 'deprecated',
-            '@constants': 'constant',
-            '@keywords': 'keyword',
-            '@builtins': 'predefined',
-            '@robloxGlobals': 'roblox',
-            '@executorFunctions': 'executor',
-            '@default': 'identifier'
-          }
-        }],
-        { include: '@whitespace' },
-        [/[{}()\[\]]/, '@brackets'],
-        [/@symbols/, {
-          cases: {
-            '@operators': 'operator',
-            '@default': ''
-          }
-        }],
-        [/0[xX][0-9a-fA-F_]+/, 'number.hex'],
-        [/0[bB][01_]+/, 'number.binary'],
-        [/\d+[eE][\-+]?\d+/, 'number.float'],
-        [/\d*\.\d+([eE][\-+]?\d+)?/, 'number.float'],
-        [/\d+[lL]?/, 'number'],
-        [/"([^"\\]|\\.)*$/, 'string.invalid'],
-        [/'([^'\\]|\\.)*$/, 'string.invalid'],
-        [/"/, 'string', '@string_double'],
-        [/'/, 'string', '@string_single'],
-        [/\[(=*)\[/, { token: 'delimiter.longstring.start', next: '@longstring.$1' }],
-      ],
-      whitespace: [
-        [/[ \t\r\n]+/, 'white'],
-        [/--\[(=*)\[/, { token: 'comment.longcomment', next: '@longcomment.$1' }],
-        [/--.*$/, 'comment'],
-      ],
-      longstring: [
-        [/\](=*)\]/, {
-          cases: {
-            '$1==$S2': { token: 'delimiter.longstring.end', next: '@pop' },
-            '@default': 'string'
-          }
-        }],
-        [/./, 'string']
-      ],
-      longcomment: [
-        [/\](=*)\]/, {
-          cases: {
-            '$1==$S2': { token: 'comment.longcomment', next: '@pop' },
-            '@default': 'comment'
-          }
-        }],
-        [/./, 'comment']
-      ],
-      string_double: [
-        [/\\./, 'string.escape'],
-        [/"/, 'string', '@pop'],
-        [/[^\\"]+/, 'string'],
-      ],
-      string_single: [
-        [/\\./, 'string.escape'],
-        [/'/, 'string', '@pop'],
-        [/[^\\']+/, 'string'],
-      ]
-    }
-  });
-  monaco.languages.setLanguageConfiguration('lua', {
-    comments: {
-      lineComment: '--',
-      blockComment: ['--[[', ']]']
-    },
-    brackets: [
-      ['{', '}'],
-      ['[', ']'],
-      ['(', ')']
-    ],
-    autoClosingPairs: [
-      { open: '{', close: '}' },
-      { open: '[', close: ']' },
-      { open: '(', close: ')' },
-      { open: '"', close: '"' },
-      { open: "'", close: "'" }
-    ],
-    surroundingPairs: [
-      { open: '{', close: '}' },
-      { open: '[', close: ']' },
-      { open: '(', close: ')' },
-      { open: '"', close: '"' },
-      { open: "'", close: "'" }
-    ],
-    indentationRules: {
-      increaseIndentPattern: /^\s*(function|then|do|repeat|else|elseif|local\s+function|if)\s*$/,
-      decreaseIndentPattern: /^\s*(end|until)\s*$/
-    },
-    folding: {
-      markers: {
-        start: new RegExp('^\\s*--\\s*#?region\\b'),
-        end: new RegExp('^\\s*--\\s*#?endregion\\b')
-      }
-    },
-    onEnterRules: []
-  });
-
-  const luaKeywords = [
-    { label: 'if', insertText: 'if ${1:condition} then\n\t${2:-- code}\nend', kind: 17 /* Keyword */ },
-    { label: 'for', insertText: 'for ${1:i} = ${2:1}, ${3:10}, ${4:1} do\n\t${5:-- code}\nend', kind: 17 },
-    { label: 'while', insertText: 'while ${1:condition} do\n\t${2:-- code}\nend', kind: 17 },
-    { label: 'repeat', insertText: 'repeat\n\t${1:-- code}\nuntil ${2:condition}', kind: 17 },
-    { label: 'function', insertText: 'function ${1:name}(${2:params})\n\t${3:-- code}\nend', kind: 17 },
-    { label: 'local', insertText: 'local ${1:name} = ${2:value}', kind: 17 },
-    { label: 'local function', insertText: 'local function ${1:name}(${2:params})\n\t${3:-- code}\nend', kind: 17 },
-    { label: 'return', insertText: 'return ${1:value}', kind: 17 },
-    { label: 'elseif', insertText: 'elseif ${1:condition} then\n\t${2:-- code}', kind: 17 },
-    { label: 'else', insertText: 'else\n\t${1:-- code}', kind: 17 },
-    { label: 'and', insertText: 'and ', kind: 17 },
-    { label: 'or', insertText: 'or ', kind: 17 },
-    { label: 'not', insertText: 'not ', kind: 17 },
-    { label: 'nil', insertText: 'nil', kind: 17 },
-    { label: 'true', insertText: 'true', kind: 17 },
-    { label: 'false', insertText: 'false', kind: 17 },
-    { label: 'self', insertText: 'self', kind: 17 },
-  ];
-
-  allCompletions.push(...luaKeywords);
-
-  monaco.languages.registerCompletionItemProvider('lua', {
-    triggerCharacters: ['.', ':', '_'],
-    provideCompletionItems: (model, position) => {
-      const word = model.getWordUntilPosition(position);
-      const lineUntilPosition = model.getValueInRange({
-        startLineNumber: position.lineNumber,
-        startColumn: 1,
-        endLineNumber: position.lineNumber,
-        endColumn: position.column
-      });
-      
-      const range = {
-        startLineNumber: position.lineNumber,
-        endLineNumber: position.lineNumber,
-        startColumn: word.startColumn,
-        endColumn: word.endColumn
-      };
-      
-      const lastChar = lineUntilPosition.trim().slice(-1);
-      
-      const createSuggestion = (item) => {
-        const itemKind = item.kind || 1; 
-        const isMethod = itemKind === 2;
-        const isKeyword = itemKind === 17;
-        
-        let iconClasses = '';
-        if (isMethod) {
-          iconClasses = 'method-icon'; 
-        } else if (isKeyword) {
-          iconClasses = 'keyword-icon'; 
-        } else {
-          iconClasses = 'function-icon';
-        }
-
-        const styleElement = document.getElementById('monaco-suggestion-styles');
-        if (!styleElement) {
-          const newStyleElement = document.createElement('style');
-          newStyleElement.id = 'monaco-suggestion-styles';
-          newStyleElement.innerHTML = `
-            .function-icon:before { content: 'ƒ'; color: #569CD6; font-weight: bold; }
-            .method-icon:before { content: 'M'; color: #4EC9B0; font-weight: bold; }
-            .keyword-icon:before { content: 'K'; color: #C586C0; font-weight: bold; }
-          `;
-          document.head.appendChild(newStyleElement);
-        }
-        
-        return {
-          label: item.label,
-          kind: isMethod 
-            ? monaco.languages.CompletionItemKind.Method 
-            : isKeyword 
-              ? monaco.languages.CompletionItemKind.Keyword 
-              : monaco.languages.CompletionItemKind.Function,
-          documentation: {
-            value: item.documentation || ''
-          },
-          detail: item.detail || '',
-          insertText: item.insertText || item.label,
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          range: range,
-          sortText: isMethod ? '2' : isKeyword ? '3' : '1', 
-          filterText: item.label,
-          command: { id: 'editor.action.triggerSuggest' }
-        };
-      };
-      
-      if (lastChar === ':') {
-        return {
-          suggestions: allCompletions
-            .filter(item => item.kind === 2) 
-            .map(item => {
-              const label = item.label.includes(':') ? item.label.split(':')[1] : item.label;
-              const insertText = item.insertText.startsWith(':') ? item.insertText : `:${item.insertText}`;
-              
-              return createSuggestion({
-                ...item,
-                label,
-                insertText,
-                kind: 2
-              });
-            })
-        };
-      } else if (lastChar === '.') {
-        return {
-          suggestions: allCompletions
-            .filter(item => item.label.includes('.'))
-            .map(item => {
-              const label = item.label.split('.').pop();
-              const insertText = item.insertText.includes('.') 
-                ? item.insertText.split('.').pop() 
-                : item.insertText;
-              
-              return createSuggestion({
-                ...item,
-                label,
-                insertText,
-                kind: 1 
-              });
-            })
-        };
-      }
-      
-      return {
-        suggestions: allCompletions.map(item => createSuggestion(item))
-      };
-    }
-  });
-
-  monaco.languages.registerHoverProvider('lua', {
-    provideHover: (model, position) => {
-      const word = model.getWordAtPosition(position);
-      if (!word) return null;
-
-      const match = allCompletions.find(item => 
-        item.label === word.word || 
-        item.label.includes(`.${word.word}`) || 
-        item.label.includes(`:${word.word}`)
-      );
-
-      if (match) {
-        return {
-          contents: [
-            { value: '```lua\n' + match.detail + '\n```' },
-            { value: match.documentation }
-          ]
-        };
-      }
-      return null;
-    }
-  });
-
-  monaco.editor.defineTheme('lua-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [
-      { token: 'keyword', foreground: 'C586C0', fontStyle: 'bold' },
-      { token: 'predefined', foreground: '569CD6' },
-      { token: 'roblox', foreground: '4EC9B0' },       
-      { token: 'executor', foreground: '4FC1FF' },     
-      { token: 'constant', foreground: '569CD6', fontStyle: 'bold' }, 
-      { token: 'identifier', foreground: 'D4D4D4' },  
-      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
-      { token: 'string', foreground: 'CE9178' },       
-      { token: 'string.escape', foreground: 'D7BA7D' }, 
-      { token: 'number', foreground: 'B5CEA8' },       
-      { token: 'number.hex', foreground: 'B5CEA8' },  
-      { token: 'number.binary', foreground: 'B5CEA8' }, 
-      { token: 'number.float', foreground: 'B5CEA8' }, 
-      { token: 'operator', foreground: 'D4D4D4' },     
-      { token: 'delimiter', foreground: 'D4D4D4' },  
-      { 
-        token: 'deprecated', 
-        foreground: 'FF5252', 
-        fontStyle: 'italic bold underline'
-      }, 
-      { token: '', foreground: 'D4D4D4' }
-    ],
-    colors: {
-      'editor.foreground': '#D4D4D4',  
-      'editor.background': '#121212',
-      'editor.selectionBackground': '#264F78',
-      'editor.lineHighlightBackground': '#2A2A2A',
-      'editorCursor.foreground': '#FFFFFF',
-      'editorWhitespace.foreground': '#404040',
-      'editorLineNumber.foreground': '#858585',
-      'editorSuggestWidget.background': '#252526',
-      'editorSuggestWidget.foreground': '#D4D4D4',
-      'editorSuggestWidget.selectedBackground': '#062F4A'
-    }
-  });
-
-  monaco.editor.setTheme('lua-dark');
-
-  monaco.languages.registerDocumentSemanticTokensProvider('lua', {
-    getLegend: () => ({
-      tokenTypes: ['variable', 'function'],
-      tokenModifiers: ['declaration', 'usage']
-    }),
-    provideDocumentSemanticTokens: (model) => {
-      const lines = model.getLinesContent();
-      const tokens = [];
-      const localDeclarations = new Map();
-      const functionDeclarations = new Set();
-      
-      lines.forEach((line, lineIndex) => {
-        const localMatches = line.matchAll(/\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=/g);
-        for (const match of localMatches) {
-          localDeclarations.set(match[1], true);
-        }
-        
-        const functionMatches = line.matchAll(/\b(?:local\s+)?function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g);
-        for (const match of functionMatches) {
-          functionDeclarations.add(match[1]);
-        }
-      });
-
-      lines.forEach((line, lineIndex) => {
-        const variableMatches = line.matchAll(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*[=\(])/g);
-        for (const match of variableMatches) {
-          const varName = match[1];
-          if (!localDeclarations.has(varName) && 
-              !functionDeclarations.has(varName) && 
-              !robloxApis.some(api => api.label === varName) &&
-              !executorFunctions.some(func => func.label === varName) &&
-              !['print', 'warn', 'error', '_G', 'game', 'workspace', 'script'].includes(varName)) {
-            
-            monaco.editor.setModelMarkers(model, 'lua', [{
-              message: `Variable '${varName}' is not defined`,
-              severity: monaco.MarkerSeverity.Warning,
-              startLineNumber: lineIndex + 1,
-              startColumn: match.index + 1,
-              endLineNumber: lineIndex + 1,
-              endColumn: match.index + match[0].length + 1
-            }]);
-          }
-        }
-        
-        const functionMatches = line.matchAll(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g);
-        for (const match of functionMatches) {
-          const funcName = match[1];
-          if (!functionDeclarations.has(funcName) && 
-              !robloxApis.some(api => api.label === funcName) &&
-              !executorFunctions.some(func => func.label === funcName)) {
-            
-            monaco.editor.setModelMarkers(model, 'lua', [{
-              message: `Function '${funcName}' is not defined`,
-              severity: monaco.MarkerSeverity.Warning,
-              startLineNumber: lineIndex + 1,
-              startColumn: match.index + 1,
-              endLineNumber: lineIndex + 1,
-              endColumn: match.index + match[0].length + 1
-            }]);
-          }
-        }
-      });
-
-      return { data: new Uint32Array(tokens) };
-    },
-    releaseDocumentSemanticTokens: () => {}
-  });
-
-  monaco.editor.onDidCreateModel(model => {
-    if (model.getLanguageId() === 'lua') {
-      model.onDidChangeContent(() => {
-        monaco.languages.semanticTokens.refresh();
-      });
-    }
-  });
-}
 
 export default setupLuaLanguage;

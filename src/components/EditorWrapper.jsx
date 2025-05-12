@@ -7,6 +7,19 @@ export default function EditorWrapper({ code, setCode, onExecute, tabName, tabId
   const [lastStableTabId, setLastStableTabId] = useState(tabId);
   const [localTabId, setLocalTabId] = useState(tabId);
   const previousTabId = useRef(tabId);
+  const [editorKey, setEditorKey] = useState(Date.now());
+  
+  useEffect(() => {
+    const forceRemount = sessionStorage.getItem('forceEditorRemount');
+    if (forceRemount === 'true') {
+      sessionStorage.removeItem('forceEditorRemount');
+      setEditorKey(Date.now());
+    }
+    
+    return () => {
+      sessionStorage.setItem('forceEditorRemount', 'true');
+    };
+  }, []);
   
   useEffect(() => {
     if (tabId !== previousTabId.current) {
@@ -55,6 +68,7 @@ export default function EditorWrapper({ code, setCode, onExecute, tabName, tabId
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-[#121212] transform-gpu">
       <MonacoEditor 
+        key={editorKey}
         code={code} 
         setCode={setCode} 
         onExecute={handleExecute}
