@@ -2,7 +2,7 @@
 
 APP_NAME="Nocturnal UI"
 APP_BUNDLE_ID="com.nocturnal.ui"
-VERSION="1.1.0"
+VERSION="1.2.1-lts"
 DATA_DIRECTORY="Nocturnal"
 
 DOWNLOAD_URL_INTEL="https://github.com/sillyconvicted/nocturnalui/releases/download/v1.2.1-lts/Nocturnal.UI.Intel.app.zip"
