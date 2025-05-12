@@ -47,20 +47,24 @@ export default function HomePage() {
           <h2 className="changelog-title">Recent Updates</h2>
           <ul className="changelog-list">
           <li>
+              <div className="changelog-version">1.2.1 LTS</div>
+              <div className="changelog-text">Fixed known bugs. First LTS version!</div>
+            </li>
+          <li>
+              <div className="changelog-version">1.2.0-alpha.1</div>
+              <div className="changelog-text">Credits page, fixes and more</div>
+            </li>
+          <li>
+              <div className="changelog-version">1.1.0-beta.1</div>
+              <div className="changelog-text">Lua highlighting, documentation and more</div>
+            </li>
+          <li>
               <div className="changelog-version">1.0.1-beta.1</div>
               <div className="changelog-text">Added Local Script Library</div>
             </li>
           <li>
               <div className="changelog-version">1.0.1-alpha.1</div>
               <div className="changelog-text">Added Discord RPC, Auto execute and more</div>
-            </li>
-          <li>
-              <div className="changelog-version">1.0.0-beta.1</div>
-              <div className="changelog-text">Join our discord server!</div>
-            </li>
-            <li>
-              <div className="changelog-version">1.0.0-alpha.1</div>
-              <div className="changelog-text">Initial release :3</div>
             </li>
           </ul>
         </div>
